@@ -1,0 +1,310 @@
+[
+  {
+    "collection": "users",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["phone_e164", "country_code", "kyc_status", "status", "preferred_currency", "created_at", "updated_at"],
+        "properties": {
+          "phone_e164": { "bsonType": "string" },
+          "email": { "bsonType": ["string", "null"] },
+          "country_code": { "bsonType": "string", "minLength": 2, "maxLength": 2 },
+          "kyc_status": { "enum": ["pending", "verified", "rejected"] },
+          "status": { "enum": ["active", "suspended"] },
+          "preferred_currency": { "bsonType": "string", "minLength": 3, "maxLength": 3 },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "phone_e164": 1 }, "options": { "unique": true } },
+      { "keys": { "email": 1 }, "options": { "unique": true, "sparse": true } },
+      { "keys": { "status": 1 } },
+      { "keys": { "country_code": 1 } }
+    ]
+  },
+  {
+    "collection": "devices",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["user_id", "device_id", "platform", "created_at"],
+        "properties": {
+          "user_id": { "bsonType": "binData" },
+          "device_id": { "bsonType": "string" },
+          "platform": { "enum": ["ios", "android"] },
+          "push_token": { "bsonType": ["string", "null"] },
+          "app_version": { "bsonType": ["string", "null"] },
+          "last_seen_at": { "bsonType": ["date", "null"] },
+          "created_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "user_id": 1, "device_id": 1 }, "options": { "unique": true } },
+      { "keys": { "user_id": 1 } }
+    ]
+  },
+  {
+    "collection": "wallets",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["user_id", "currency", "available_balance", "held_balance", "created_at", "updated_at"],
+        "properties": {
+          "user_id": { "bsonType": "binData" },
+          "currency": { "bsonType": "string", "minLength": 3, "maxLength": 3 },
+          "available_balance": { "bsonType": "decimal" },
+          "held_balance": { "bsonType": "decimal" },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "user_id": 1 }, "options": { "unique": true } }
+    ]
+  },
+  {
+    "collection": "wallet_transactions",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["wallet_id", "type", "amount", "currency", "idempotency_key", "metadata", "created_at"],
+        "properties": {
+          "wallet_id": { "bsonType": "binData" },
+          "type": { "enum": ["topup", "hold", "capture", "release", "refund", "adjustment"] },
+          "amount": { "bsonType": "decimal" },
+          "currency": { "bsonType": "string", "minLength": 3, "maxLength": 3 },
+          "reference_type": { "bsonType": ["string", "null"] },
+          "reference_id": { "bsonType": ["binData", "null"] },
+          "idempotency_key": { "bsonType": "string" },
+          "metadata": { "bsonType": "object" },
+          "created_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "wallet_id": 1, "created_at": -1 } },
+      { "keys": { "reference_type": 1, "reference_id": 1 } },
+      { "keys": { "idempotency_key": 1 }, "options": { "unique": true } }
+    ]
+  },
+  {
+    "collection": "rate_plans",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["name", "currency", "active", "created_at"],
+        "properties": {
+          "name": { "bsonType": "string" },
+          "currency": { "bsonType": "string", "minLength": 3, "maxLength": 3 },
+          "active": { "bsonType": "bool" },
+          "created_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "name": 1 }, "options": { "unique": true } }
+    ]
+  },
+  {
+    "collection": "destination_rates",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["rate_plan_id", "prefix", "country_code", "description", "retail_rate_per_min", "wholesale_rate_per_min", "billing_increment_sec", "min_duration_sec", "effective_from", "created_at"],
+        "properties": {
+          "rate_plan_id": { "bsonType": "binData" },
+          "prefix": { "bsonType": "string" },
+          "country_code": { "bsonType": "string", "minLength": 2, "maxLength": 2 },
+          "description": { "bsonType": "string" },
+          "retail_rate_per_min": { "bsonType": "decimal" },
+          "wholesale_rate_per_min": { "bsonType": "decimal" },
+          "billing_increment_sec": { "bsonType": "int" },
+          "min_duration_sec": { "bsonType": "int" },
+          "effective_from": { "bsonType": "date" },
+          "effective_to": { "bsonType": ["date", "null"] },
+          "created_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "rate_plan_id": 1, "prefix": 1, "effective_from": 1 }, "options": { "unique": true } },
+      { "keys": { "prefix": 1, "effective_from": -1 } },
+      { "keys": { "country_code": 1 } }
+    ]
+  },
+  {
+    "collection": "carriers",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["name", "provider_key", "auth_type", "status", "priority", "config", "created_at", "updated_at"],
+        "properties": {
+          "name": { "bsonType": "string" },
+          "provider_key": { "bsonType": "string" },
+          "sip_host": { "bsonType": ["string", "null"] },
+          "auth_type": { "bsonType": "string" },
+          "status": { "enum": ["active", "disabled"] },
+          "priority": { "bsonType": "int" },
+          "config": { "bsonType": "object" },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "name": 1 }, "options": { "unique": true } }
+    ]
+  },
+  {
+    "collection": "carrier_routes",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["carrier_id", "prefix", "cost_per_min", "quality_score", "active", "created_at"],
+        "properties": {
+          "carrier_id": { "bsonType": "binData" },
+          "prefix": { "bsonType": "string" },
+          "cost_per_min": { "bsonType": "decimal" },
+          "quality_score": { "bsonType": "decimal" },
+          "active": { "bsonType": "bool" },
+          "created_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "carrier_id": 1, "prefix": 1 }, "options": { "unique": true } },
+      { "keys": { "prefix": 1, "active": 1 } }
+    ]
+  },
+  {
+    "collection": "calls",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["user_id", "to_e164", "status", "retail_rate_per_min", "currency", "created_at", "updated_at"],
+        "properties": {
+          "user_id": { "bsonType": "binData" },
+          "device_id": { "bsonType": ["string", "null"] },
+          "to_e164": { "bsonType": "string" },
+          "from_cli": { "bsonType": ["string", "null"] },
+          "status": { "enum": ["initiated", "ringing", "answered", "completed", "failed", "cancelled"] },
+          "carrier_id": { "bsonType": ["binData", "null"] },
+          "carrier_call_id": { "bsonType": ["string", "null"] },
+          "retail_rate_per_min": { "bsonType": "decimal" },
+          "wholesale_rate_per_min": { "bsonType": ["decimal", "null"] },
+          "currency": { "bsonType": "string", "minLength": 3, "maxLength": 3 },
+          "hold_transaction_id": { "bsonType": ["binData", "null"] },
+          "started_at": { "bsonType": ["date", "null"] },
+          "answered_at": { "bsonType": ["date", "null"] },
+          "ended_at": { "bsonType": ["date", "null"] },
+          "duration_sec": { "bsonType": ["int", "null"] },
+          "billed_amount": { "bsonType": ["decimal", "null"] },
+          "fail_reason": { "bsonType": ["string", "null"] },
+          "metadata": { "bsonType": "object" },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "user_id": 1, "created_at": -1 } },
+      { "keys": { "status": 1 } },
+      { "keys": { "carrier_call_id": 1 } },
+      { "keys": { "to_e164": 1 } }
+    ]
+  },
+  {
+    "collection": "cdrs",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["call_id", "carrier_call_id", "event_type", "raw_payload", "received_at"],
+        "properties": {
+          "call_id": { "bsonType": "binData" },
+          "carrier_call_id": { "bsonType": "string" },
+          "event_type": { "bsonType": "string" },
+          "duration_sec": { "bsonType": ["int", "null"] },
+          "disposition": { "bsonType": ["string", "null"] },
+          "wholesale_cost": { "bsonType": ["decimal", "null"] },
+          "raw_payload": { "bsonType": "object" },
+          "received_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "call_id": 1 } },
+      { "keys": { "carrier_call_id": 1 } }
+    ]
+  },
+  {
+    "collection": "topups",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["user_id", "wallet_id", "provider", "amount", "currency", "status", "idempotency_key", "metadata", "created_at", "updated_at"],
+        "properties": {
+          "user_id": { "bsonType": "binData" },
+          "wallet_id": { "bsonType": "binData" },
+          "provider": { "enum": ["stripe", "mpesa", "telebirr"] },
+          "provider_ref": { "bsonType": ["string", "null"] },
+          "amount": { "bsonType": "decimal" },
+          "currency": { "bsonType": "string", "minLength": 3, "maxLength": 3 },
+          "status": { "enum": ["pending", "succeeded", "failed"] },
+          "checkout_url": { "bsonType": ["string", "null"] },
+          "idempotency_key": { "bsonType": "string" },
+          "metadata": { "bsonType": "object" },
+          "created_at": { "bsonType": "date" },
+          "updated_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "user_id": 1, "created_at": -1 } },
+      { "keys": { "provider": 1, "provider_ref": 1 } },
+      { "keys": { "idempotency_key": 1 }, "options": { "unique": true } }
+    ]
+  },
+  {
+    "collection": "otp_requests",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["phone_e164", "code_hash", "channel", "expires_at", "attempt_count", "created_at"],
+        "properties": {
+          "phone_e164": { "bsonType": "string" },
+          "code_hash": { "bsonType": "string" },
+          "channel": { "bsonType": "string" },
+          "expires_at": { "bsonType": "date" },
+          "verified_at": { "bsonType": ["date", "null"] },
+          "attempt_count": { "bsonType": "int" },
+          "created_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "phone_e164": 1, "created_at": -1 } }
+    ]
+  },
+  {
+    "collection": "webhook_events",
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["source", "external_id", "payload", "processed_at"],
+        "properties": {
+          "source": { "bsonType": "string" },
+          "external_id": { "bsonType": "string" },
+          "payload": { "bsonType": "object" },
+          "processed_at": { "bsonType": "date" }
+        }
+      }
+    },
+    "indexes": [
+      { "keys": { "source": 1, "external_id": 1 }, "options": { "unique": true } }
+    ]
+  }
+]

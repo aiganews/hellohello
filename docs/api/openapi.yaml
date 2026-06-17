@@ -1,0 +1,843 @@
+openapi: 3.1.0
+info:
+  title: HelloHello Calling Platform API
+  version: 1.0.0
+  description: |
+    Prepaid international calling platform API.
+    Supports wallet top-up, rate lookup, outbound call control, and call history.
+
+servers:
+  - url: http://localhost:8080/v1
+    description: Local development
+  - url: https://api.hellohello.app/v1
+    description: Production
+  - url: https://api.staging.hellohello.app/v1
+    description: Staging
+
+tags:
+  - name: Auth
+  - name: Users
+  - name: Wallet
+  - name: Rates
+  - name: Calls
+  - name: Topups
+  - name: Devices
+  - name: Webhooks
+
+paths:
+  /auth/otp/request:
+    post:
+      tags: [Auth]
+      summary: Request phone OTP
+      operationId: requestOtp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpRequest'
+      responses:
+        '200':
+          description: OTP sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpRequestResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/otp/verify:
+    post:
+      tags: [Auth]
+      summary: Verify OTP and issue tokens
+      operationId: verifyOtp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OtpVerifyRequest'
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokensResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/token/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: New tokens issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokensResponse'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke refresh token
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Logged out
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get current user profile
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+    patch:
+      tags: [Users]
+      summary: Update user profile
+      operationId: updateCurrentUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /wallet:
+    get:
+      tags: [Wallet]
+      summary: Get wallet balance
+      operationId: getWallet
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Wallet details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+
+  /wallet/transactions:
+    get:
+      tags: [Wallet]
+      summary: List wallet transactions
+      operationId: listWalletTransactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Transaction list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletTransactionList'
+
+  /rates/lookup:
+    get:
+      tags: [Rates]
+      summary: Lookup rate for a phone number
+      operationId: lookupRate
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: number
+          in: query
+          required: true
+          description: E.164 phone number
+          schema:
+            type: string
+            example: "+251911234567"
+      responses:
+        '200':
+          description: Rate details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLookupResponse'
+        '404':
+          description: Destination not supported
+
+  /rates/countries:
+    get:
+      tags: [Rates]
+      summary: List supported destination countries
+      operationId: listCountries
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Country list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  countries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CountryRate'
+
+  /calls:
+    post:
+      tags: [Calls]
+      summary: Initiate outbound call
+      operationId: createCall
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCallRequest'
+      responses:
+        '201':
+          description: Call initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallSession'
+        '402':
+          description: Insufficient balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Blocked by fraud rules
+
+    get:
+      tags: [Calls]
+      summary: List call history
+      operationId: listCalls
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Call history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallList'
+
+  /calls/{callId}:
+    get:
+      tags: [Calls]
+      summary: Get call status
+      operationId: getCall
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CallId'
+      responses:
+        '200':
+          description: Call details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Call'
+
+  /calls/{callId}/hangup:
+    post:
+      tags: [Calls]
+      summary: Hang up active call
+      operationId: hangupCall
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CallId'
+      responses:
+        '200':
+          description: Hangup requested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Call'
+
+  /topups:
+    post:
+      tags: [Topups]
+      summary: Create top-up session
+      operationId: createTopup
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTopupRequest'
+      responses:
+        '201':
+          description: Top-up session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopupSession'
+
+  /topups/{topupId}:
+    get:
+      tags: [Topups]
+      summary: Get top-up status
+      operationId: getTopup
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: topupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Top-up status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Topup'
+
+  /devices:
+    post:
+      tags: [Devices]
+      summary: Register device for push notifications
+      operationId: registerDevice
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegistration'
+      responses:
+        '201':
+          description: Device registered
+
+  /webhooks/stripe:
+    post:
+      tags: [Webhooks]
+      summary: Stripe payment webhook
+      operationId: stripeWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Webhook processed
+
+  /webhooks/telnyx:
+    post:
+      tags: [Webhooks]
+      summary: Telnyx call event webhook
+      operationId: telnyxWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelnyxWebhookEnvelope'
+      responses:
+        '200':
+          description: Webhook processed
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    CallId:
+      name: callId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    TooManyRequests:
+      description: Rate limited
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: INSUFFICIENT_BALANCE
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+    OtpRequest:
+      type: object
+      required: [phoneE164]
+      properties:
+        phoneE164:
+          type: string
+          example: "+12065366291"
+        channel:
+          type: string
+          enum: [sms, voice]
+          default: sms
+
+    OtpRequestResponse:
+      type: object
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        expiresInSec:
+          type: integer
+          example: 300
+
+    OtpVerifyRequest:
+      type: object
+      required: [phoneE164, code, requestId]
+      properties:
+        phoneE164:
+          type: string
+        code:
+          type: string
+          example: "123456"
+        requestId:
+          type: string
+          format: uuid
+        deviceId:
+          type: string
+
+    AuthTokensResponse:
+      type: object
+      required: [accessToken, refreshToken, expiresInSec, user]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresInSec:
+          type: integer
+          example: 3600
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      required: [id, phoneE164, countryCode, kycStatus, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        phoneE164:
+          type: string
+        email:
+          type: string
+          format: email
+          nullable: true
+        countryCode:
+          type: string
+          example: US
+        kycStatus:
+          type: string
+          enum: [pending, verified, rejected]
+        status:
+          type: string
+          enum: [active, suspended]
+        createdAt:
+          type: string
+          format: date-time
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        preferredCurrency:
+          type: string
+          example: USD
+
+    Wallet:
+      type: object
+      required: [id, currency, availableBalance, heldBalance]
+      properties:
+        id:
+          type: string
+          format: uuid
+        currency:
+          type: string
+          example: USD
+        availableBalance:
+          type: number
+          format: decimal
+          example: 12.50
+        heldBalance:
+          type: number
+          format: decimal
+          example: 1.25
+
+    WalletTransaction:
+      type: object
+      required: [id, type, amount, currency, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [topup, hold, capture, release, refund, adjustment]
+        amount:
+          type: number
+          format: decimal
+        currency:
+          type: string
+        referenceType:
+          type: string
+          nullable: true
+        referenceId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    WalletTransactionList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WalletTransaction'
+        nextCursor:
+          type: string
+          nullable: true
+
+    RateLookupResponse:
+      type: object
+      required: [number, countryCode, destinationLabel, ratePerMin, currency, billingIncrementSec]
+      properties:
+        number:
+          type: string
+        countryCode:
+          type: string
+          example: ET
+        destinationLabel:
+          type: string
+          example: Ethiopia Mobile
+        ratePerMin:
+          type: number
+          format: decimal
+          example: 0.25
+        currency:
+          type: string
+          example: USD
+        billingIncrementSec:
+          type: integer
+          example: 60
+        estimatedMaxMinutes:
+          type: number
+          format: decimal
+
+    CountryRate:
+      type: object
+      properties:
+        countryCode:
+          type: string
+        countryName:
+          type: string
+        startingRatePerMin:
+          type: number
+          format: decimal
+        currency:
+          type: string
+
+    CreateCallRequest:
+      type: object
+      required: [to, deviceId]
+      properties:
+        to:
+          type: string
+          description: Destination E.164 number
+          example: "+251911234567"
+        deviceId:
+          type: string
+        callerId:
+          type: string
+          nullable: true
+          description: Optional CLI override if permitted
+
+    CallSession:
+      type: object
+      required: [callId, status, estimatedRatePerMin, currency, reservedAmount, telephony]
+      properties:
+        callId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [initiated, ringing, answered, completed, failed]
+        estimatedRatePerMin:
+          type: number
+          format: decimal
+        currency:
+          type: string
+        reservedAmount:
+          type: number
+          format: decimal
+        telephony:
+          $ref: '#/components/schemas/TelephonyCredentials'
+
+    TelephonyCredentials:
+      type: object
+      required: [provider, connectionId]
+      properties:
+        provider:
+          type: string
+          example: telnyx
+        connectionId:
+          type: string
+        loginToken:
+          type: string
+          description: Short-lived token for WebRTC client
+        sipUsername:
+          type: string
+          nullable: true
+        sipPassword:
+          type: string
+          nullable: true
+        webrtcConfig:
+          type: object
+          additionalProperties: true
+
+    Call:
+      type: object
+      required: [id, to, status, retailRatePerMin, currency, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        to:
+          type: string
+        status:
+          type: string
+          enum: [initiated, ringing, answered, completed, failed, cancelled]
+        retailRatePerMin:
+          type: number
+          format: decimal
+        wholesaleRatePerMin:
+          type: number
+          format: decimal
+          nullable: true
+        durationSec:
+          type: integer
+          nullable: true
+        billedAmount:
+          type: number
+          format: decimal
+          nullable: true
+        currency:
+          type: string
+        carrierName:
+          type: string
+          nullable: true
+        failReason:
+          type: string
+          nullable: true
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        answeredAt:
+          type: string
+          format: date-time
+          nullable: true
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    CallList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Call'
+        nextCursor:
+          type: string
+          nullable: true
+
+    CreateTopupRequest:
+      type: object
+      required: [amount, currency, provider]
+      properties:
+        amount:
+          type: number
+          format: decimal
+          minimum: 1
+          example: 10.00
+        currency:
+          type: string
+          example: USD
+        provider:
+          type: string
+          enum: [stripe, mpesa, telebirr]
+        successUrl:
+          type: string
+          format: uri
+        cancelUrl:
+          type: string
+          format: uri
+
+    TopupSession:
+      type: object
+      required: [topupId, status, checkoutUrl]
+      properties:
+        topupId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, succeeded, failed]
+        checkoutUrl:
+          type: string
+          format: uri
+          nullable: true
+
+    Topup:
+      type: object
+      required: [id, amount, currency, provider, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: decimal
+        currency:
+          type: string
+        provider:
+          type: string
+        status:
+          type: string
+          enum: [pending, succeeded, failed]
+        providerRef:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    DeviceRegistration:
+      type: object
+      required: [deviceId, platform, pushToken]
+      properties:
+        deviceId:
+          type: string
+        platform:
+          type: string
+          enum: [ios, android]
+        pushToken:
+          type: string
+        appVersion:
+          type: string
+
+    TelnyxWebhookEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            event_type:
+              type: string
+              example: call.initiated
+            id:
+              type: string
+            occurred_at:
+              type: string
+              format: date-time
+            payload:
+              type: object
+              additionalProperties: true
+        meta:
+          type: object
+          properties:
+            attempt:
+              type: integer
+            delivered_to:
+              type: string
