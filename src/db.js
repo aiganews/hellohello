@@ -116,6 +116,20 @@ async function seedDefaultRates() {
       {
         id: `rate-${crypto.randomUUID()}`,
         rate_plan_id: planId,
+        prefix: '+251911',
+        country_code: 'ET',
+        description: 'Ethiopia Mobile (911)',
+        retail_rate_per_min: 0.25,
+        wholesale_rate_per_min: 0.20,
+        billing_increment_sec: 60,
+        min_duration_sec: 0,
+        effective_from: new Date(),
+        effective_to: null,
+        created_at: new Date()
+      },
+      {
+        id: `rate-${crypto.randomUUID()}`,
+        rate_plan_id: planId,
         prefix: '+254',
         country_code: 'KE',
         description: 'Kenya Mobile',

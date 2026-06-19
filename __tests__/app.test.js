@@ -1,12 +1,15 @@
 import request from 'supertest';
 import app from '../src/app.js';
-import { closeDb } from '../src/db.js';
+import { connectDb, closeDb } from '../src/db.js';
 
 let auth;
 let user;
 let topupId;
 
 describe('HelloHello API', () => {
+  beforeAll(async () => {
+    await connectDb();
+  });
   it('should request OTP and verify successfully', async () => {
     const otpResponse = await request(app)
       .post('/v1/auth/otp/request')
