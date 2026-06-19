@@ -123,6 +123,10 @@ function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 
+function isValidE164(phoneE164) {
+  return /^\+[1-9]\d{7,14}$/.test(phoneE164);
+}
+
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) {
@@ -154,20 +158,48 @@ v1.get('/', (req, res) => {
 });
 
 v1.post('/auth/otp/request', asyncHandler(async (req, res) => {
-  const { phoneE164 } = req.body;
+  const { phoneE164, channel = 'whatsapp' } = req.body;
   if (!phoneE164) {
     return res.status(400).json({ code: 'INVALID_REQUEST', message: 'phoneE164 is required' });
   }
-  const otp = await createOtpRequest(phoneE164);
-  res.json({ requestId: otp.id, expiresInSec: 300 });
+  if (!isValidE164(phoneE164)) {
+    return res.status(400).json({ code: 'INVALID_REQUEST', message: 'phoneE164 must be a valid E.164 phone number' });
+  }
+  if (!['sms', 'whatsapp'].includes(channel)) {
+    return res.status(400).json({ code: 'INVALID_REQUEST', message: 'channel must be sms or whatsapp' });
+  }
+
+  try {
+    const otp = await createOtpRequest(phoneE164, { channel });
+    res.json({
+      requestId: otp.id,
+      expiresInSec: 300,
+      deliveryStatus: otp.delivery_status || 'sent',
+      delivery: {
+        provider: otp.delivery_provider || null,
+        messageId: otp.delivery_message_id || null,
+        status: otp.delivery_status || 'sent'
+      }
+    });
+  } catch (error) {
+    if (error.code === 'SMS_DELIVERY_FAILED') {
+      return res.status(error.status || 503).json({
+        code: 'OTP_DELIVERY_FAILED',
+        message: 'Unable to send OTP to that phone number',
+        details: error.details || {}
+      });
+    }
+    throw error;
+  }
 }));
 
 v1.post('/auth/otp/verify', asyncHandler(async (req, res) => {
-  const { phoneE164, code, requestId } = req.body;
-  if (!phoneE164 || !code || !requestId) {
-    return res.status(400).json({ code: 'INVALID_REQUEST', message: 'phoneE164, code, and requestId are required' });
+  const { phoneE164, code, requestId, otpRequestResponse, otpRequest } = req.body;
+  const resolvedRequestId = requestId || otpRequestResponse?.requestId || otpRequest?.requestId;
+  if (!phoneE164 || !code || !resolvedRequestId) {
+    return res.status(400).json({ code: 'INVALID_REQUEST', message: 'phoneE164, code, and requestId or otpRequestResponse.requestId are required' });
   }
-  const user = await verifyOtp(requestId, phoneE164, code);
+  const user = await verifyOtp(resolvedRequestId, phoneE164, code);
   if (!user) {
     return res.status(401).json({ code: 'UNAUTHORIZED', message: 'Invalid OTP or expired request' });
   }

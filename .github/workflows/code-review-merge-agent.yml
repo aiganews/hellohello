@@ -1,0 +1,145 @@
+name: Code Review Merge Agent
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to review and queue for automerge
+        required: true
+        type: number
+
+permissions:
+  actions: read
+  checks: read
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  review-and-merge:
+    name: Review code changes and queue merge
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.event == 'pull_request' &&
+        github.event.workflow_run.conclusion == 'success'
+      )
+
+    steps:
+      - name: Review candidate pull request
+        id: review
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const requiredLabel = 'agent:auto-merge';
+            const workflowChangeLabel = 'agent:workflow-change-approved';
+
+            async function findPullRequest() {
+              if (context.eventName === 'workflow_dispatch') {
+                const pull_number = Number(core.getInput('pr_number'));
+                const { data: pull } = await github.rest.pulls.get({ owner, repo, pull_number });
+                return pull;
+              }
+
+              const sha = context.payload.workflow_run.head_sha;
+              const pulls = await github.paginate(
+                github.rest.repos.listPullRequestsAssociatedWithCommit,
+                {
+                  owner,
+                  repo,
+                  commit_sha: sha,
+                  per_page: 100
+                }
+              );
+              return pulls.find((pull) => pull.state === 'open' && pull.base.ref === 'main');
+            }
+
+            const pull = await findPullRequest();
+            if (!pull) {
+              core.info('No open main-targeting pull request found for this successful CI run.');
+              core.setOutput('should_merge', 'false');
+              return;
+            }
+
+            const labels = pull.labels.map((label) => label.name);
+            const reviewLines = [
+              '## Code Review Merge Agent',
+              '',
+              `Reviewed PR #${pull.number} after successful CI.`,
+              ''
+            ];
+            const blockers = [];
+
+            if (pull.draft) {
+              blockers.push('Pull request is still marked as draft.');
+            }
+            if (pull.base.ref !== 'main') {
+              blockers.push(`Base branch is \`${pull.base.ref}\`; this agent only merges into \`main\`.`);
+            }
+            if (pull.head.repo.full_name !== `${owner}/${repo}`) {
+              blockers.push('Pull request comes from a fork; automatic merge is disabled for forked code.');
+            }
+            if (!labels.includes(requiredLabel)) {
+              blockers.push(`Missing required label \`${requiredLabel}\`.`);
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: pull.number,
+              per_page: 100
+            });
+
+            const sensitivePathPattern = /(^|\/)(\.env|secrets?\.json|.*\.(pem|p12|pfx|key))$/i;
+            const secretPattern = /(AKIA[0-9A-Z]{16}|-----BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----|mongodb(\+srv)?:\/\/[^\s"'<>]+:[^\s"'<>]+@|aws_secret_access_key\s*[=:]|stripe_(live|test)_secret|TELNYX_API_KEY\s*[=:]|(ACCESS|REFRESH)_TOKEN_SECRET\s*[=:]\s*[^\s"'<>]{12,})/i;
+
+            for (const file of files) {
+              if (file.filename.startsWith('.github/workflows/') && !labels.includes(workflowChangeLabel)) {
+                blockers.push(`Workflow file changed without \`${workflowChangeLabel}\`: \`${file.filename}\`.`);
+              }
+              if (sensitivePathPattern.test(file.filename)) {
+                blockers.push(`Sensitive-looking file path changed: \`${file.filename}\`.`);
+              }
+              if (file.patch && secretPattern.test(file.patch)) {
+                blockers.push(`Secret-looking content found in patch for \`${file.filename}\`.`);
+              }
+            }
+
+            if (blockers.length > 0) {
+              reviewLines.push('### Result: blocked');
+              reviewLines.push('');
+              for (const blocker of blockers) {
+                reviewLines.push(`- ${blocker}`);
+              }
+              reviewLines.push('');
+              reviewLines.push('Resolve the blockers, rerun CI, and dispatch this workflow again if needed.');
+              core.setOutput('should_merge', 'false');
+            } else {
+              reviewLines.push('### Result: approved for automerge');
+              reviewLines.push('');
+              reviewLines.push('- CI completed successfully.');
+              reviewLines.push('- Required automerge label is present.');
+              reviewLines.push('- No obvious secret material or sensitive file changes were detected.');
+              core.setOutput('should_merge', 'true');
+              core.setOutput('pr_url', pull.html_url);
+            }
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: pull.number,
+              body: reviewLines.join('\n')
+            });
+
+      - name: Queue merge to main
+        if: steps.review.outputs.should_merge == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ steps.review.outputs.pr_url }}
+        run: gh pr merge "$PR_URL" --squash --auto --delete-branch

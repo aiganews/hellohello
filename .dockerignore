@@ -5,6 +5,10 @@ npm-debug.log
 .env
 .env.local
 coverage
-docs
+docs/*
+!docs/api/
+!docs/api/openapi.yaml
+infra
+.github
 .vscode
 *.md

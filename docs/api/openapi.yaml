@@ -38,13 +38,25 @@ paths:
               $ref: '#/components/schemas/OtpRequest'
       responses:
         '200':
-          description: OTP sent
+          description: OTP sent to the submitted phone number
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/OtpRequestResponse'
+        '400':
+          description: Invalid phone number or unsupported OTP channel
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: OTP delivery failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /auth/otp/verify:
     post:
@@ -447,11 +459,11 @@ components:
       properties:
         phoneE164:
           type: string
-          example: "+12065366291"
+          description: E.164 mobile number that will receive the OTP SMS.
         channel:
           type: string
-          enum: [sms, voice]
-          default: sms
+          enum: [sms, whatsapp]
+          default: whatsapp
 
     OtpRequestResponse:
       type: object
@@ -462,19 +474,40 @@ components:
         expiresInSec:
           type: integer
           example: 300
+        deliveryStatus:
+          type: string
+          example: queued
+        delivery:
+          type: object
+          description: Safe SMS provider delivery metadata. The OTP code and raw provider response are never returned.
+          properties:
+            provider:
+              type: string
+              enum: [telnyx, twilio, log, test]
+            messageId:
+              type: string
+              nullable: true
+              description: Provider message identifier, such as a Twilio SM... SID.
+            status:
+              type: string
+              example: queued
 
     OtpVerifyRequest:
       type: object
-      required: [phoneE164, code, requestId]
+      required: [phoneE164, code]
       properties:
         phoneE164:
           type: string
         code:
           type: string
-          example: "123456"
+          description: Six-digit code received by SMS or WhatsApp.
+          example: "847392"
         requestId:
           type: string
           format: uuid
+          description: Request ID from the OTP request response. Either requestId or otpRequestResponse.requestId is required.
+        otpRequestResponse:
+          $ref: '#/components/schemas/OtpRequestResponse'
         deviceId:
           type: string
 

@@ -1,6 +1,7 @@
 import request from 'supertest';
 import app from '../src/app.js';
 import { connectDb, closeDb } from '../src/db.js';
+import { clearTestSmsMessages, getLastTestSms } from '../src/sms.js';
 
 let auth;
 let user;
@@ -8,22 +9,32 @@ let topupId;
 
 describe('HelloHello API', () => {
   beforeAll(async () => {
+    process.env.SMS_PROVIDER = 'test';
     await connectDb();
   });
   it('should request OTP and verify successfully', async () => {
+    clearTestSmsMessages();
     const otpResponse = await request(app)
       .post('/v1/auth/otp/request')
-      .send({ phoneE164: '+251911234567', channel: 'sms' });
+      .send({ phoneE164: '+251911234567' });
 
     expect(otpResponse.status).toBe(200);
     expect(otpResponse.body.requestId).toBeDefined();
+    expect(otpResponse.body.deliveryStatus).toBe('sent');
+    expect(otpResponse.body.delivery.provider).toBe('test');
+
+    const sentOtp = getLastTestSms();
+    expect(sentOtp).toBeDefined();
+    expect(sentOtp.to).toBe('+251911234567');
+    expect(sentOtp.channel).toBe('whatsapp');
+    expect(sentOtp.code).toMatch(/^\d{6}$/);
 
     const verifyResponse = await request(app)
       .post('/v1/auth/otp/verify')
       .send({
         phoneE164: '+251911234567',
-        code: '123456',
-        requestId: otpResponse.body.requestId,
+        code: sentOtp.code,
+        otpRequestResponse: otpResponse.body,
         deviceId: 'device-123'
       });
 

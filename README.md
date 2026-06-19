@@ -11,6 +11,7 @@ Boss Revolution–style prepaid international calling app with multi-carrier rou
 | Telnyx telephony integration | [docs/telephony/telnyx-integration.md](docs/telephony/telnyx-integration.md) |
 | Database migrations | [docs/database/migrations/001_initial_schema.sql](docs/database/migrations/001_initial_schema.sql) |
 | 12-week MVP sprint plan | [docs/sprint-plan.md](docs/sprint-plan.md) |
+| Repository agents | [AGENTS.md](AGENTS.md) |
 
 ## Initial corridors
 
@@ -45,6 +46,81 @@ For production-style startup, use:
 ```bash
 npm start
 ```
+
+For a production-style local run without external services, use:
+
+```bash
+npm ci
+npm run start:local:prod
+```
+
+For the closest local production setup, run the production Docker image with MongoDB:
+
+```bash
+npm run docker:local:prod
+```
+
+Then open:
+
+```text
+http://localhost:8080/health
+http://localhost:8080/swagger
+http://localhost:8080/openapi.yaml
+```
+
+To send real OTP SMS from the production-style local run, provide Telnyx SMS credentials before requesting `/v1/auth/otp/request`:
+
+```bash
+export TELNYX_API_KEY=your-telnyx-api-key
+export TELNYX_FROM_NUMBER=+12065550100
+npm run start:local:prod
+```
+
+Or use Twilio:
+
+```bash
+export SMS_PROVIDER=twilio
+export TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+export TWILIO_AUTH_TOKEN=your-rotated-twilio-auth-token
+export TWILIO_FROM_NUMBER=+12065550100
+npm run start:local:prod
+```
+
+For Twilio WhatsApp template OTP:
+
+```bash
+export SMS_PROVIDER=twilio
+export TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+export TWILIO_AUTH_TOKEN=your-rotated-twilio-auth-token
+export TWILIO_FROM_NUMBER=+14155238886
+export TWILIO_WHATSAPP_CONTENT_SID=HX229f5a04fd0510ce1b071852155d3e75
+export TWILIO_WHATSAPP_STATUS_CALLBACK_URL=https://timberwolf-mastiff-9776.twil.io/hellohello-callback
+npm run start:local:prod
+```
+
+Then request OTP with:
+
+```json
+{
+  "phoneE164": "+12065366291",
+  "channel": "whatsapp"
+}
+```
+
+The app sends the equivalent of Twilio's `Messages.json` API call with `To` set from `phoneE164`, `From` set from `TWILIO_FROM_NUMBER`, and `Body` set to the generated OTP message. The OTP is generated per request and sent to the `phoneE164` mobile number submitted in Swagger or the API request.
+
+For WhatsApp, the app sends `To=whatsapp:<phoneE164>`, `From` from `TWILIO_WHATSAPP_FROM` or `TWILIO_FROM_NUMBER`, `ContentSid=TWILIO_WHATSAPP_CONTENT_SID`, and `ContentVariables={"1":"<generated otp>"}`. If `TWILIO_FROM_NUMBER` is used, the app automatically adds the `whatsapp:` prefix.
+
+In Twilio Console, configure the WhatsApp Sandbox endpoints with `POST`:
+
+| Sandbox field | URL |
+|---------------|-----|
+| When a message comes in | `https://timberwolf-mastiff-9776.twil.io/hellohello-reply` |
+| Status callback URL | `https://timberwolf-mastiff-9776.twil.io/hellohello-callback` |
+
+For Sandbox testing, the recipient must join by sending `join sort-behavior` from WhatsApp to `+1 415 523 8886`. The expected participant for the current test number is `whatsapp:+12065366291`.
+
+The verify request can use the `requestId` field directly, or pass the full OTP request response as `otpRequestResponse`. Verification still requires the six-digit code received by SMS or WhatsApp.
 
 Stripe configuration should be provided through environment variables or a secret manager before using payment routes.
 

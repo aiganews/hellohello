@@ -1,7 +1,15 @@
 import crypto from 'crypto';
 import { getDb, client } from './db.js';
+import { sendOtpSms } from './sms.js';
 
 const now = () => new Date();
+const otpHashSecret =
+  process.env.OTP_HASH_SECRET ||
+  process.env.ACCESS_TOKEN_SECRET ||
+  process.env.REFRESH_TOKEN_SECRET ||
+  crypto.randomBytes(32).toString('hex');
+const OTP_TTL_MS = 300_000;
+const OTP_MAX_ATTEMPTS = 5;
 
 function normalizeCountry(phoneE164) {
   if (phoneE164.startsWith('+1')) return 'US';
@@ -12,6 +20,23 @@ function normalizeCountry(phoneE164) {
 async function getUserByPhone(phoneE164) {
   const db = await getDb();
   return db.collection('users').findOne({ phone_e164: phoneE164 });
+}
+
+function generateOtpCode() {
+  return crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
+}
+
+function hashOtpCode(requestId, phoneE164, code) {
+  return crypto
+    .createHmac('sha256', otpHashSecret)
+    .update(`${requestId}:${phoneE164}:${code}`)
+    .digest('hex');
+}
+
+function timingSafeEqualString(left, right) {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
 async function getUserById(userId) {
@@ -64,19 +89,40 @@ async function createUser(phoneE164, { email = null, role = 'user' } = {}) {
   return user;
 }
 
-async function createOtpRequest(phoneE164) {
+async function createOtpRequest(phoneE164, { channel = 'sms' } = {}) {
   const db = await getDb();
+  const requestId = crypto.randomUUID();
+  const code = generateOtpCode();
   const request = {
-    id: crypto.randomUUID(),
+    id: requestId,
     phone_e164: phoneE164,
-    code_hash: '123456',
-    channel: 'sms',
-    expires_at: new Date(Date.now() + 300_000),
+    code_hash: hashOtpCode(requestId, phoneE164, code),
+    channel,
+    expires_at: new Date(Date.now() + OTP_TTL_MS),
     verified_at: null,
     attempt_count: 0,
     created_at: now()
   };
   await db.collection('otp_requests').insertOne(request);
+  try {
+    const delivery = await sendOtpSms({ to: phoneE164, code, channel });
+    request.delivery_provider = delivery.provider;
+    request.delivery_message_id = delivery.messageId;
+    request.delivery_status = delivery.status;
+    await db.collection('otp_requests').updateOne(
+      { id: requestId },
+      {
+        $set: {
+          delivery_provider: delivery.provider,
+          delivery_message_id: delivery.messageId,
+          delivery_status: delivery.status
+        }
+      }
+    );
+  } catch (error) {
+    await db.collection('otp_requests').deleteOne({ id: requestId });
+    throw error;
+  }
   return request;
 }
 
@@ -85,7 +131,15 @@ async function verifyOtp(requestId, phoneE164, code) {
   const request = await db.collection('otp_requests').findOne({ id: requestId, phone_e164: phoneE164 });
   if (!request) return null;
   if (request.expires_at < now()) return null;
-  if (request.code_hash !== code) return null;
+  if (request.verified_at) return null;
+  if (request.attempt_count >= OTP_MAX_ATTEMPTS) return null;
+
+  const expectedHash = hashOtpCode(requestId, phoneE164, code);
+  if (!timingSafeEqualString(request.code_hash, expectedHash)) {
+    await db.collection('otp_requests').updateOne({ id: requestId }, { $inc: { attempt_count: 1 } });
+    return null;
+  }
+
   await db.collection('otp_requests').updateOne({ id: requestId }, { $set: { verified_at: now() } });
   return createUser(phoneE164);
 }

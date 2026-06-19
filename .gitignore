@@ -45,3 +45,12 @@ __tests__/coverage/
 
 # Ignore mongodb memory server downloads
 mongodb-mem-* 
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log

@@ -1,0 +1,18 @@
+aws_region   = "us-east-1"
+project_name = "hellohello"
+environment  = "prod"
+
+github_owner  = "aiganews"
+github_repo   = "hellohello"
+github_branch = "main"
+
+# Set this to your frontend origin once the web app is available.
+cors_origins = ""
+
+# Use "telnyx" or "twilio" for production OTP SMS delivery.
+sms_provider = "telnyx"
+
+# Optional HTTPS/domain setup. Leave empty to access the ALB DNS name over HTTP.
+certificate_arn = ""
+hosted_zone_id  = ""
+domain_name     = ""
