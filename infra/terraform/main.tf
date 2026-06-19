@@ -66,6 +66,10 @@ locals {
     {
       name  = "TRUST_PROXY"
       value = tostring(var.trust_proxy)
+    },
+    {
+      name  = "SMS_PROVIDER"
+      value = var.sms_provider
     }
   ]
 
@@ -77,7 +81,11 @@ locals {
     "OTP_HASH_SECRET",
     "TELNYX_API_KEY",
     "TELNYX_FROM_NUMBER",
-    "TELNYX_MESSAGING_PROFILE_ID"
+    "TELNYX_MESSAGING_PROFILE_ID",
+    "TWILIO_ACCOUNT_SID",
+    "TWILIO_AUTH_TOKEN",
+    "TWILIO_FROM_NUMBER",
+    "TWILIO_MESSAGING_SERVICE_SID"
   ]
 
   tags = {

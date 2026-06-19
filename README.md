@@ -76,6 +76,16 @@ export TELNYX_FROM_NUMBER=+12065550100
 npm run start:local:prod
 ```
 
+Or use Twilio:
+
+```bash
+export SMS_PROVIDER=twilio
+export TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+export TWILIO_AUTH_TOKEN=your-rotated-twilio-auth-token
+export TWILIO_FROM_NUMBER=+12065550100
+npm run start:local:prod
+```
+
 The OTP is generated per request and sent to the `phoneE164` mobile number submitted in Swagger or the API request.
 
 Stripe configuration should be provided through environment variables or a secret manager before using payment routes.

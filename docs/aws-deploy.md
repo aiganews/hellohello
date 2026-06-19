@@ -70,11 +70,19 @@ aws secretsmanager put-secret-value \
     "OTP_HASH_SECRET": "replace-with-strong-random-value",
     "TELNYX_API_KEY": "replace-with-telnyx-api-key",
     "TELNYX_FROM_NUMBER": "+12065550100",
-    "TELNYX_MESSAGING_PROFILE_ID": ""
+    "TELNYX_MESSAGING_PROFILE_ID": "",
+    "TWILIO_ACCOUNT_SID": "",
+    "TWILIO_AUTH_TOKEN": "",
+    "TWILIO_FROM_NUMBER": "",
+    "TWILIO_MESSAGING_SERVICE_SID": ""
   }'
 ```
 
-Use real production values. Do not commit them. `TELNYX_FROM_NUMBER` must be an SMS-enabled Telnyx number in E.164 format. If you prefer a Telnyx messaging profile, set `TELNYX_FROM_NUMBER` to an empty string and provide `TELNYX_MESSAGING_PROFILE_ID`.
+Use real production values. Do not commit them.
+
+For Telnyx, set `sms_provider = "telnyx"` in `terraform.tfvars` and provide `TELNYX_API_KEY` plus either `TELNYX_FROM_NUMBER` or `TELNYX_MESSAGING_PROFILE_ID`. `TELNYX_FROM_NUMBER` must be an SMS-enabled E.164 number.
+
+For Twilio, set `sms_provider = "twilio"` in `terraform.tfvars` and provide `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`. Twilio Account SIDs start with `AC`; Messaging Service SIDs start with `MG`.
 
 ## Configure GitHub Actions CD
 

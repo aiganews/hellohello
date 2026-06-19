@@ -9,6 +9,9 @@ github_branch = "main"
 # Set this to your frontend origin once the web app is available.
 cors_origins = ""
 
+# Use "telnyx" or "twilio" for production OTP SMS delivery.
+sms_provider = "telnyx"
+
 # Optional HTTPS/domain setup. Leave empty to access the ALB DNS name over HTTP.
 certificate_arn = ""
 hosted_zone_id  = ""

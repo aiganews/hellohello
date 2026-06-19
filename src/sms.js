@@ -49,6 +49,42 @@ async function sendWithTelnyx({ to, text }) {
   }
 }
 
+async function sendWithTwilio({ to, text }) {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_FROM_NUMBER;
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+
+  if (!accountSid || !authToken || (!from && !messagingServiceSid)) {
+    throw createSmsError('Twilio SMS is not configured.');
+  }
+
+  const body = new URLSearchParams({
+    To: to,
+    Body: text
+  });
+
+  if (from) {
+    body.set('From', from);
+  } else {
+    body.set('MessagingServiceSid', messagingServiceSid);
+  }
+
+  const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body
+  });
+
+  if (!response.ok) {
+    throw createSmsError(`Twilio SMS delivery failed with status ${response.status}.`);
+  }
+}
+
 async function sendOtpSms({ to, code }) {
   const provider = getSmsProvider();
   const text = buildOtpMessage(code);
@@ -63,6 +99,11 @@ async function sendOtpSms({ to, code }) {
 
   if (provider === 'telnyx') {
     await sendWithTelnyx({ to, text });
+    return;
+  }
+
+  if (provider === 'twilio') {
+    await sendWithTwilio({ to, text });
     return;
   }
 

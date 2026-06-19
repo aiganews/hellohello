@@ -94,6 +94,17 @@ variable "trust_proxy" {
   default     = true
 }
 
+variable "sms_provider" {
+  description = "SMS provider used for production OTP delivery. Supported values: telnyx, twilio."
+  type        = string
+  default     = "telnyx"
+
+  validation {
+    condition     = contains(["telnyx", "twilio"], var.sms_provider)
+    error_message = "sms_provider must be either telnyx or twilio."
+  }
+}
+
 variable "certificate_arn" {
   description = "Optional ACM certificate ARN. When set, the ALB serves HTTPS and redirects HTTP to HTTPS."
   type        = string
