@@ -11,6 +11,7 @@ Boss Revolution–style prepaid international calling app with multi-carrier rou
 | Telnyx telephony integration | [docs/telephony/telnyx-integration.md](docs/telephony/telnyx-integration.md) |
 | Database migrations | [docs/database/migrations/001_initial_schema.sql](docs/database/migrations/001_initial_schema.sql) |
 | 12-week MVP sprint plan | [docs/sprint-plan.md](docs/sprint-plan.md) |
+| Repository agents | [AGENTS.md](AGENTS.md) |
 
 ## Initial corridors
 
