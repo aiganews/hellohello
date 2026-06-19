@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
+    "start:local:prod": "NODE_ENV=production USE_IN_MEMORY_MONGO=true node src/index.js",
     "dev": "NODE_ENV=development nodemon src/index.js",
     "build": "npm install --production",
     "docker:build": "docker build -t hellohello-api:latest .",

@@ -1,7 +1,5 @@
 name: CI
 
-name: CI
-
 on:
   push:
     branches: [ main ]
@@ -50,4 +48,4 @@ jobs:
 #          docker build -t hellohello-api:latest .
 #          docker tag hellohello-api:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/hellohello-api:latest
 #          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/hellohello-api:latest
-          aws ecs update-service \
+#          aws ecs update-service --cluster hellohello --service hellohello-api --force-new-deployment

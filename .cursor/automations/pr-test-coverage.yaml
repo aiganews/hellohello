@@ -1,0 +1,20 @@
+name: PR Test Coverage Check
+enabled: true
+description: Ensure new API routes and data-layer changes include Jest tests.
+
+trigger:
+  - type: github
+    event: pull_request_opened
+  - type: github
+    event: pull_request_pushed
+
+repository:
+  mode: single
+  branch: main
+
+tools:
+  - comment_on_pull_request
+  - memories
+
+prompt_file: .cursor/automations/prompts/pr-test-coverage.md
+github_workflow: .github/workflows/automation-agents.yml

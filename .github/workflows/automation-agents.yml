@@ -1,0 +1,81 @@
+name: Automation Agents
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: Which automation agent to run
+        required: true
+        default: pr-code-review
+        type: choice
+        options:
+          - pr-code-review
+          - pr-test-coverage
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  pr-review:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'pr-code-review')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Cursor CLI
+        run: |
+          curl https://cursor.com/install -fsS | bash
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+
+      - name: Run PR code review agent
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        run: |
+          if [ -z "$CURSOR_API_KEY" ]; then
+            echo "CURSOR_API_KEY secret is not configured."
+            echo "Automation definition: .cursor/automations/pr-code-review.yaml"
+            exit 0
+          fi
+          agent -p "$(cat .cursor/automations/prompts/pr-code-review.md)" --model gpt-5 --force
+
+  test-coverage:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'pr-test-coverage')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Cursor CLI
+        run: |
+          curl https://cursor.com/install -fsS | bash
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+
+      - name: Run test coverage agent
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          NODE_ENV: test
+        run: |
+          if [ -z "$CURSOR_API_KEY" ]; then
+            echo "CURSOR_API_KEY secret is not configured."
+            echo "Automation definition: .cursor/automations/pr-test-coverage.yaml"
+            exit 0
+          fi
+          npm test
+          agent -p "$(cat .cursor/automations/prompts/pr-test-coverage.md)" --model gpt-5 --force
