@@ -76,7 +76,8 @@ aws secretsmanager put-secret-value \
     "TWILIO_FROM_NUMBER": "",
     "TWILIO_MESSAGING_SERVICE_SID": "",
     "TWILIO_WHATSAPP_FROM": "",
-    "TWILIO_WHATSAPP_CONTENT_SID": ""
+    "TWILIO_WHATSAPP_CONTENT_SID": "",
+    "TWILIO_WHATSAPP_STATUS_CALLBACK_URL": "https://timberwolf-mastiff-9776.twil.io/hellohello-reply"
   }'
 ```
 
@@ -87,6 +88,14 @@ For Telnyx, set `sms_provider = "telnyx"` in `terraform.tfvars` and provide `TEL
 For Twilio SMS, set `sms_provider = "twilio"` in `terraform.tfvars` and provide `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`. Twilio Account SIDs start with `AC`; Messaging Service SIDs start with `MG`.
 
 For Twilio WhatsApp template OTP, also provide `TWILIO_WHATSAPP_FROM` such as `whatsapp:+14155238886` and `TWILIO_WHATSAPP_CONTENT_SID` such as `HX...`. The app sends `ContentVariables` with the generated OTP as variable `1`.
+
+In Twilio Console, configure the WhatsApp Sandbox **When a message comes in** endpoint URL to:
+
+```text
+https://timberwolf-mastiff-9776.twil.io/hellohello-reply
+```
+
+`TWILIO_WHATSAPP_STATUS_CALLBACK_URL` is optional for outbound delivery status callbacks. It is not a substitute for the Sandbox inbound reply URL.
 
 ## Configure GitHub Actions CD
 

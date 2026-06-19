@@ -148,6 +148,7 @@ async function sendWithTwilioWhatsApp({ to, code }) {
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_WHATSAPP_FROM;
   const contentSid = process.env.TWILIO_WHATSAPP_CONTENT_SID || process.env.TWILIO_CONTENT_SID;
+  const statusCallback = process.env.TWILIO_WHATSAPP_STATUS_CALLBACK_URL || process.env.TWILIO_STATUS_CALLBACK_URL;
 
   if (!accountSid || !authToken || !from || !contentSid) {
     throw createSmsError('Twilio WhatsApp OTP is not configured.', {
@@ -168,6 +169,10 @@ async function sendWithTwilioWhatsApp({ to, code }) {
     ContentSid: contentSid,
     ContentVariables: JSON.stringify({ 1: code })
   });
+
+  if (statusCallback) {
+    body.set('StatusCallback', statusCallback);
+  }
 
   const auth = buildTwilioAuth(accountSid, authToken);
   const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
