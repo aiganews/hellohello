@@ -1,0 +1,24 @@
+services:
+  api:
+    build:
+      context: .
+    image: hellohello-api:local-prod
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      USE_IN_MEMORY_MONGO: "false"
+      MONGODB_URI: mongodb://mongo:27017/hellohello
+      CORS_ORIGINS: http://localhost:8080
+      TRUST_PROXY: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:7.0
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

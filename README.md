@@ -47,6 +47,27 @@ For production-style startup, use:
 npm start
 ```
 
+For a production-style local run without external services, use:
+
+```bash
+npm ci
+npm run start:local:prod
+```
+
+For the closest local production setup, run the production Docker image with MongoDB:
+
+```bash
+npm run docker:local:prod
+```
+
+Then open:
+
+```text
+http://localhost:8080/health
+http://localhost:8080/swagger
+http://localhost:8080/openapi.yaml
+```
+
 Stripe configuration should be provided through environment variables or a secret manager before using payment routes.
 
 Do not commit real secret keys into source control.
