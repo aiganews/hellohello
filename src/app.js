@@ -123,6 +123,10 @@ function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 
+function isValidE164(phoneE164) {
+  return /^\+[1-9]\d{7,14}$/.test(phoneE164);
+}
+
 async function authMiddleware(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) {
@@ -154,12 +158,26 @@ v1.get('/', (req, res) => {
 });
 
 v1.post('/auth/otp/request', asyncHandler(async (req, res) => {
-  const { phoneE164 } = req.body;
+  const { phoneE164, channel = 'sms' } = req.body;
   if (!phoneE164) {
     return res.status(400).json({ code: 'INVALID_REQUEST', message: 'phoneE164 is required' });
   }
-  const otp = await createOtpRequest(phoneE164);
-  res.json({ requestId: otp.id, expiresInSec: 300 });
+  if (!isValidE164(phoneE164)) {
+    return res.status(400).json({ code: 'INVALID_REQUEST', message: 'phoneE164 must be a valid E.164 phone number' });
+  }
+  if (channel !== 'sms') {
+    return res.status(400).json({ code: 'INVALID_REQUEST', message: 'Only sms OTP delivery is supported' });
+  }
+
+  try {
+    const otp = await createOtpRequest(phoneE164, { channel });
+    res.json({ requestId: otp.id, expiresInSec: 300, deliveryStatus: 'sent' });
+  } catch (error) {
+    if (error.code === 'SMS_DELIVERY_FAILED') {
+      return res.status(error.status || 503).json({ code: 'OTP_DELIVERY_FAILED', message: 'Unable to send OTP to that phone number' });
+    }
+    throw error;
+  }
 }));
 
 v1.post('/auth/otp/verify', asyncHandler(async (req, res) => {

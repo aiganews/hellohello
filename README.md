@@ -68,6 +68,16 @@ http://localhost:8080/swagger
 http://localhost:8080/openapi.yaml
 ```
 
+To send real OTP SMS from the production-style local run, provide Telnyx SMS credentials before requesting `/v1/auth/otp/request`:
+
+```bash
+export TELNYX_API_KEY=your-telnyx-api-key
+export TELNYX_FROM_NUMBER=+12065550100
+npm run start:local:prod
+```
+
+The OTP is generated per request and sent to the `phoneE164` mobile number submitted in Swagger or the API request.
+
 Stripe configuration should be provided through environment variables or a secret manager before using payment routes.
 
 Do not commit real secret keys into source control.

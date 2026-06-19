@@ -66,11 +66,15 @@ aws secretsmanager put-secret-value \
     "MONGODB_URI": "mongodb+srv://user:url-encoded-password@example.mongodb.net/hellohello?retryWrites=true&w=majority",
     "ACCESS_TOKEN_SECRET": "replace-with-strong-random-value",
     "REFRESH_TOKEN_SECRET": "replace-with-strong-random-value",
-    "ADMIN_PHONE": "+251900642936"
+    "ADMIN_PHONE": "+251900642936",
+    "OTP_HASH_SECRET": "replace-with-strong-random-value",
+    "TELNYX_API_KEY": "replace-with-telnyx-api-key",
+    "TELNYX_FROM_NUMBER": "+12065550100",
+    "TELNYX_MESSAGING_PROFILE_ID": ""
   }'
 ```
 
-Use real production values. Do not commit them.
+Use real production values. Do not commit them. `TELNYX_FROM_NUMBER` must be an SMS-enabled Telnyx number in E.164 format. If you prefer a Telnyx messaging profile, set `TELNYX_FROM_NUMBER` to an empty string and provide `TELNYX_MESSAGING_PROFILE_ID`.
 
 ## Configure GitHub Actions CD
 

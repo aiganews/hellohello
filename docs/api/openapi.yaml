@@ -38,13 +38,25 @@ paths:
               $ref: '#/components/schemas/OtpRequest'
       responses:
         '200':
-          description: OTP sent
+          description: OTP sent to the submitted phone number
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/OtpRequestResponse'
+        '400':
+          description: Invalid phone number or unsupported OTP channel
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '429':
           $ref: '#/components/responses/TooManyRequests'
+        '503':
+          description: OTP delivery failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
   /auth/otp/verify:
     post:
@@ -447,10 +459,10 @@ components:
       properties:
         phoneE164:
           type: string
-          example: "+12065366291"
+          description: E.164 mobile number that will receive the OTP SMS.
         channel:
           type: string
-          enum: [sms, voice]
+          enum: [sms]
           default: sms
 
     OtpRequestResponse:
@@ -462,6 +474,9 @@ components:
         expiresInSec:
           type: integer
           example: 300
+        deliveryStatus:
+          type: string
+          enum: [sent]
 
     OtpVerifyRequest:
       type: object
@@ -471,7 +486,8 @@ components:
           type: string
         code:
           type: string
-          example: "123456"
+          description: Six-digit code received by SMS.
+          example: "847392"
         requestId:
           type: string
           format: uuid
