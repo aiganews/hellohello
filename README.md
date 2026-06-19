@@ -94,7 +94,7 @@ export TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 export TWILIO_AUTH_TOKEN=your-rotated-twilio-auth-token
 export TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 export TWILIO_WHATSAPP_CONTENT_SID=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-export TWILIO_WHATSAPP_STATUS_CALLBACK_URL=https://timberwolf-mastiff-9776.twil.io/hellohello-reply
+export TWILIO_WHATSAPP_STATUS_CALLBACK_URL=https://timberwolf-mastiff-9776.twil.io/hellohello-callback
 npm run start:local:prod
 ```
 
@@ -111,13 +111,14 @@ The app sends the equivalent of Twilio's `Messages.json` API call with `To` set 
 
 For WhatsApp, the app sends `To=whatsapp:<phoneE164>`, `From=TWILIO_WHATSAPP_FROM`, `ContentSid=TWILIO_WHATSAPP_CONTENT_SID`, and `ContentVariables={"1":"<generated otp>"}`.
 
-In Twilio Console, configure the WhatsApp Sandbox **When a message comes in** endpoint URL to:
+In Twilio Console, configure the WhatsApp Sandbox endpoints with `POST`:
 
-```text
-https://timberwolf-mastiff-9776.twil.io/hellohello-reply
-```
+| Sandbox field | URL |
+|---------------|-----|
+| When a message comes in | `https://timberwolf-mastiff-9776.twil.io/hellohello-reply` |
+| Status callback URL | `https://timberwolf-mastiff-9776.twil.io/hellohello-callback` |
 
-`TWILIO_WHATSAPP_STATUS_CALLBACK_URL` is optional and sends delivery status callbacks for outbound messages. It is separate from the Sandbox inbound reply URL.
+For Sandbox testing, the recipient must join by sending `join sort-behavior` from WhatsApp to `+1 415 523 8886`. The expected participant for the current test number is `whatsapp:+12065366291`.
 
 The verify request can use the `requestId` field directly, or pass the full OTP request response as `otpRequestResponse`. Verification still requires the six-digit code received by SMS or WhatsApp.
 

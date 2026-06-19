@@ -77,7 +77,7 @@ aws secretsmanager put-secret-value \
     "TWILIO_MESSAGING_SERVICE_SID": "",
     "TWILIO_WHATSAPP_FROM": "",
     "TWILIO_WHATSAPP_CONTENT_SID": "",
-    "TWILIO_WHATSAPP_STATUS_CALLBACK_URL": "https://timberwolf-mastiff-9776.twil.io/hellohello-reply"
+    "TWILIO_WHATSAPP_STATUS_CALLBACK_URL": "https://timberwolf-mastiff-9776.twil.io/hellohello-callback"
   }'
 ```
 
@@ -89,13 +89,16 @@ For Twilio SMS, set `sms_provider = "twilio"` in `terraform.tfvars` and provide 
 
 For Twilio WhatsApp template OTP, also provide `TWILIO_WHATSAPP_FROM` such as `whatsapp:+14155238886` and `TWILIO_WHATSAPP_CONTENT_SID` such as `HX...`. The app sends `ContentVariables` with the generated OTP as variable `1`.
 
-In Twilio Console, configure the WhatsApp Sandbox **When a message comes in** endpoint URL to:
+In Twilio Console, configure the WhatsApp Sandbox endpoints with `POST`:
 
-```text
-https://timberwolf-mastiff-9776.twil.io/hellohello-reply
-```
+| Sandbox field | URL |
+|---------------|-----|
+| When a message comes in | `https://timberwolf-mastiff-9776.twil.io/hellohello-reply` |
+| Status callback URL | `https://timberwolf-mastiff-9776.twil.io/hellohello-callback` |
 
-`TWILIO_WHATSAPP_STATUS_CALLBACK_URL` is optional for outbound delivery status callbacks. It is not a substitute for the Sandbox inbound reply URL.
+For Sandbox testing, the recipient must join by sending `join sort-behavior` from WhatsApp to `+1 415 523 8886`. The expected participant for the current test number is `whatsapp:+12065366291`.
+
+`TWILIO_WHATSAPP_STATUS_CALLBACK_URL` maps to the outbound status callback URL. It is not a substitute for the Sandbox inbound reply URL.
 
 ## Configure GitHub Actions CD
 

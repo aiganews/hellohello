@@ -45,7 +45,7 @@ describe('SMS providers', () => {
     process.env.TWILIO_AUTH_TOKEN = 'test-auth-token';
     process.env.TWILIO_WHATSAPP_FROM = 'whatsapp:+14155238886';
     process.env.TWILIO_WHATSAPP_CONTENT_SID = 'HX00000000000000000000000000000000';
-    process.env.TWILIO_WHATSAPP_STATUS_CALLBACK_URL = 'https://timberwolf-mastiff-9776.twil.io/hellohello-reply';
+    process.env.TWILIO_WHATSAPP_STATUS_CALLBACK_URL = 'https://timberwolf-mastiff-9776.twil.io/hellohello-callback';
 
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
@@ -63,7 +63,7 @@ describe('SMS providers', () => {
     expect(options.body.get('From')).toBe('whatsapp:+14155238886');
     expect(options.body.get('ContentSid')).toBe('HX00000000000000000000000000000000');
     expect(JSON.parse(options.body.get('ContentVariables'))).toEqual({ 1: '409173' });
-    expect(options.body.get('StatusCallback')).toBe('https://timberwolf-mastiff-9776.twil.io/hellohello-reply');
+    expect(options.body.get('StatusCallback')).toBe('https://timberwolf-mastiff-9776.twil.io/hellohello-callback');
     expect(delivery).toEqual({
       provider: 'twilio',
       messageId: 'SM11111111111111111111111111111111',
