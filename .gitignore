@@ -1,2 +1,47 @@
-node_modules
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment
 .env
+.env.*
+
+# Logs
+logs/
+*.log
+pids/
+*.pid
+*.seed
+
+# macOS
+.DS_Store
+
+# Editor directories and files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Build
+dist/
+build/
+coverage/
+
+# Misc
+*.tgz
+.cache/
+
+# Docker
+.dockerignore
+
+# Secrets
+secrets.json
+
+# Ignore test artifacts
+__tests__/coverage/
+
+# Ignore mongodb memory server downloads
+mongodb-mem-* 
