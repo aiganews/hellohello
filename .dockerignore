@@ -6,5 +6,7 @@ npm-debug.log
 .env.local
 coverage
 docs
+infra
+.github
 .vscode
 *.md

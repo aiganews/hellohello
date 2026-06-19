@@ -1,48 +1,145 @@
 # AWS Deployment Guide
 
 ## Overview
-This guide covers deploying the HelloHello API to AWS ECS/Fargate using ECR and Secrets Manager.
+
+HelloHello deploys to AWS with Terraform-managed infrastructure and GitHub Actions continuous deployment.
+
+Terraform provisions:
+
+- VPC with public and private subnets
+- Internet gateway, NAT gateways, and route tables
+- Application Load Balancer
+- ECS/Fargate cluster, service, task definition, and security groups
+- ECR repository
+- CloudWatch log group
+- Secrets Manager secret metadata
+- GitHub Actions OIDC IAM role for deployment
+- Optional Route53 alias record and HTTPS listener
+
+GitHub Actions deploys:
+
+1. `CI` runs tests on `main`.
+2. `Deploy` starts only after `CI` succeeds.
+3. The workflow assumes the Terraform-created AWS role through GitHub OIDC.
+4. The workflow builds and pushes a Docker image to ECR.
+5. The workflow updates the ECS service with the new image.
 
 ## Prerequisites
-- AWS CLI configured with `us-east-1`
-- Docker installed
-- AWS account ID: `218549830323`
-- GitHub repository with secrets configured
 
-## Local setup
-1. Copy `.env.example` to `.env`.
-2. Set local values for `ACCESS_TOKEN_SECRET`, `REFRESH_TOKEN_SECRET`, and `ADMIN_PHONE`.
-3. For production, set `USE_IN_MEMORY_MONGO=false` and `MONGODB_URI`.
+- AWS CLI authenticated with permission to create Terraform resources.
+- Terraform `>= 1.6`.
+- GitHub repository admin access for adding repository variables.
+- A MongoDB connection string for production.
+- Optional: ACM certificate and Route53 hosted zone for HTTPS/domain access.
 
-## Build and push Docker image
+## Provision infrastructure
+
+From the repository root:
+
 ```bash
-docker build -t hellohello-api:latest .
-aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 218549830323.dkr.ecr.us-east-1.amazonaws.com
-docker tag hellohello-api:latest 218549830323.dkr.ecr.us-east-1.amazonaws.com/hellohello-api:latest
-docker push 218549830323.dkr.ecr.us-east-1.amazonaws.com/hellohello-api:latest
+cd infra/terraform
+cp terraform.tfvars.example terraform.tfvars
+terraform init
+terraform plan
+terraform apply
 ```
 
-## ECS setup
-1. Create ECS cluster:
-```bash
-aws ecs create-cluster --cluster-name hellohello-cluster --region us-east-1
-```
-2. Register task definition:
-```bash
-aws ecs register-task-definition --cli-input-json file://ecs-task-def.json
-```
-3. Create service with ALB and network config.
+The default production names match the existing HelloHello deployment names:
 
-## Secrets Manager
-Create secret `hellohello/secrets` with JSON keys:
-- `MONGODB_URI`
-- `ACCESS_TOKEN_SECRET`
-- `REFRESH_TOKEN_SECRET`
-- `ADMIN_PHONE`
+- ECR repository: `hellohello-api`
+- ECS cluster: `hellohello-cluster`
+- ECS service: `hellohello-api-service`
+- ECS task definition family: `hellohello-api-task`
+- ECS container name: `hellohello-api`
 
-## GitHub Actions
-The workflow in `.github/workflows/ci.yml` runs tests, builds the Docker image, pushes it to ECR, and updates the ECS service.
+## Runtime secrets
+
+Terraform creates the secret metadata but does not write secret values, because Terraform state should not contain runtime credentials.
+
+Populate the secret after `terraform apply`:
+
+```bash
+aws secretsmanager put-secret-value \
+  --region "$(terraform output -raw aws_region)" \
+  --secret-id "$(terraform output -raw secrets_manager_secret_name)" \
+  --secret-string '{
+    "MONGODB_URI": "mongodb+srv://user:url-encoded-password@example.mongodb.net/hellohello?retryWrites=true&w=majority",
+    "ACCESS_TOKEN_SECRET": "replace-with-strong-random-value",
+    "REFRESH_TOKEN_SECRET": "replace-with-strong-random-value",
+    "ADMIN_PHONE": "+251900642936"
+  }'
+```
+
+Use real production values. Do not commit them.
+
+## Configure GitHub Actions CD
+
+Add these repository variables in GitHub:
+
+| Variable | Value |
+|----------|-------|
+| `AWS_REGION` | `terraform output -raw aws_region` |
+| `AWS_ROLE_TO_ASSUME` | `terraform output -raw github_actions_deploy_role_arn` |
+| `ECR_REPOSITORY` | `terraform output -raw ecr_repository_name` |
+| `ECS_CLUSTER` | `terraform output -raw ecs_cluster_name` |
+| `ECS_SERVICE` | `terraform output -raw ecs_service_name` |
+| `ECS_TASK_DEFINITION_FAMILY` | `terraform output -raw ecs_task_definition_family` |
+| `ECS_CONTAINER_NAME` | `terraform output -raw ecs_container_name` |
+
+The deploy workflow is `.github/workflows/deploy.yml`.
+
+It runs automatically after `CI` succeeds on `main`. You can also run it manually from GitHub Actions with **Run workflow**.
+
+## Access the API in a web browser
+
+After Terraform and the first deploy complete, open:
+
+```bash
+terraform output -raw health_url
+terraform output -raw swagger_url
+```
+
+Without a custom domain, the URLs use the public Application Load Balancer DNS name:
+
+```text
+http://<alb-dns-name>/health
+http://<alb-dns-name>/swagger
+http://<alb-dns-name>/openapi.yaml
+```
+
+With `certificate_arn`, `hosted_zone_id`, and `domain_name` set in `terraform.tfvars`, Terraform creates HTTPS access:
+
+```text
+https://api.hellohello.app/health
+https://api.hellohello.app/swagger
+https://api.hellohello.app/openapi.yaml
+```
+
+## Optional HTTPS and domain configuration
+
+1. Create or import an ACM certificate in the same region as the ALB.
+2. Set these values in `infra/terraform/terraform.tfvars`:
+
+```hcl
+certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/..."
+hosted_zone_id  = "Z..."
+domain_name     = "api.hellohello.app"
+```
+
+3. Run:
+
+```bash
+terraform plan
+terraform apply
+```
+
+Terraform will redirect HTTP to HTTPS when a certificate is configured.
 
 ## Health endpoints
-- `/health` returns service status
-- `/ready` checks database readiness
+
+- `/health` returns service status and is used by the load balancer.
+- `/ready` checks database readiness.
+
+## Legacy task definition
+
+`ecs-task-def.json` is retained as a reference artifact. The active deployment path uses Terraform and the task definition managed in `infra/terraform`.
