@@ -146,7 +146,7 @@ async function sendWithTwilioSms({ to, text }) {
 async function sendWithTwilioWhatsApp({ to, code }) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_WHATSAPP_FROM;
+  const from = process.env.TWILIO_WHATSAPP_FROM || process.env.TWILIO_FROM_NUMBER;
   const contentSid = process.env.TWILIO_WHATSAPP_CONTENT_SID || process.env.TWILIO_CONTENT_SID;
   const statusCallback = process.env.TWILIO_WHATSAPP_STATUS_CALLBACK_URL || process.env.TWILIO_STATUS_CALLBACK_URL;
 
@@ -157,7 +157,7 @@ async function sendWithTwilioWhatsApp({ to, code }) {
       missing: [
         !accountSid ? 'TWILIO_ACCOUNT_SID' : null,
         !authToken ? 'TWILIO_AUTH_TOKEN' : null,
-        !from ? 'TWILIO_WHATSAPP_FROM' : null,
+        !from ? 'TWILIO_WHATSAPP_FROM or TWILIO_FROM_NUMBER' : null,
         !contentSid ? 'TWILIO_WHATSAPP_CONTENT_SID' : null
       ].filter(Boolean)
     });

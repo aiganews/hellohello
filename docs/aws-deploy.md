@@ -87,7 +87,7 @@ For Telnyx, set `sms_provider = "telnyx"` in `terraform.tfvars` and provide `TEL
 
 For Twilio SMS, set `sms_provider = "twilio"` in `terraform.tfvars` and provide `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`. Twilio Account SIDs start with `AC`; Messaging Service SIDs start with `MG`.
 
-For Twilio WhatsApp template OTP, also provide `TWILIO_WHATSAPP_FROM` such as `whatsapp:+14155238886` and `TWILIO_WHATSAPP_CONTENT_SID` such as `HX...`. The app sends `ContentVariables` with the generated OTP as variable `1`.
+For Twilio WhatsApp template OTP, provide `TWILIO_FROM_NUMBER` such as `+14155238886` or `TWILIO_WHATSAPP_FROM` such as `whatsapp:+14155238886`, plus `TWILIO_WHATSAPP_CONTENT_SID` such as `HX...`. The app sends `ContentVariables` with the generated OTP as variable `1`; when `TWILIO_FROM_NUMBER` is used, the app automatically adds the `whatsapp:` prefix.
 
 In Twilio Console, configure the WhatsApp Sandbox endpoints with `POST`:
 

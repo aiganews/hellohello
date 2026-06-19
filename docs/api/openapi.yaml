@@ -463,7 +463,7 @@ components:
         channel:
           type: string
           enum: [sms, whatsapp]
-          default: sms
+          default: whatsapp
 
     OtpRequestResponse:
       type: object

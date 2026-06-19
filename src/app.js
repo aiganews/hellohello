@@ -158,7 +158,7 @@ v1.get('/', (req, res) => {
 });
 
 v1.post('/auth/otp/request', asyncHandler(async (req, res) => {
-  const { phoneE164, channel = 'sms' } = req.body;
+  const { phoneE164, channel = 'whatsapp' } = req.body;
   if (!phoneE164) {
     return res.status(400).json({ code: 'INVALID_REQUEST', message: 'phoneE164 is required' });
   }

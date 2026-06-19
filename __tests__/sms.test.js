@@ -43,7 +43,7 @@ describe('SMS providers', () => {
     process.env.SMS_PROVIDER = 'twilio';
     process.env.TWILIO_ACCOUNT_SID = 'AC00000000000000000000000000000000';
     process.env.TWILIO_AUTH_TOKEN = 'test-auth-token';
-    process.env.TWILIO_WHATSAPP_FROM = 'whatsapp:+14155238886';
+    process.env.TWILIO_FROM_NUMBER = '+14155238886';
     process.env.TWILIO_WHATSAPP_CONTENT_SID = 'HX00000000000000000000000000000000';
     process.env.TWILIO_WHATSAPP_STATUS_CALLBACK_URL = 'https://timberwolf-mastiff-9776.twil.io/hellohello-callback';
 

@@ -92,7 +92,7 @@ For Twilio WhatsApp template OTP:
 export SMS_PROVIDER=twilio
 export TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 export TWILIO_AUTH_TOKEN=your-rotated-twilio-auth-token
-export TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+export TWILIO_FROM_NUMBER=+14155238886
 export TWILIO_WHATSAPP_CONTENT_SID=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 export TWILIO_WHATSAPP_STATUS_CALLBACK_URL=https://timberwolf-mastiff-9776.twil.io/hellohello-callback
 npm run start:local:prod
@@ -109,7 +109,7 @@ Then request OTP with:
 
 The app sends the equivalent of Twilio's `Messages.json` API call with `To` set from `phoneE164`, `From` set from `TWILIO_FROM_NUMBER`, and `Body` set to the generated OTP message. The OTP is generated per request and sent to the `phoneE164` mobile number submitted in Swagger or the API request.
 
-For WhatsApp, the app sends `To=whatsapp:<phoneE164>`, `From=TWILIO_WHATSAPP_FROM`, `ContentSid=TWILIO_WHATSAPP_CONTENT_SID`, and `ContentVariables={"1":"<generated otp>"}`.
+For WhatsApp, the app sends `To=whatsapp:<phoneE164>`, `From` from `TWILIO_WHATSAPP_FROM` or `TWILIO_FROM_NUMBER`, `ContentSid=TWILIO_WHATSAPP_CONTENT_SID`, and `ContentVariables={"1":"<generated otp>"}`. If `TWILIO_FROM_NUMBER` is used, the app automatically adds the `whatsapp:` prefix.
 
 In Twilio Console, configure the WhatsApp Sandbox endpoints with `POST`:
 

@@ -16,7 +16,7 @@ describe('HelloHello API', () => {
     clearTestSmsMessages();
     const otpResponse = await request(app)
       .post('/v1/auth/otp/request')
-      .send({ phoneE164: '+251911234567', channel: 'sms' });
+      .send({ phoneE164: '+251911234567' });
 
     expect(otpResponse.status).toBe(200);
     expect(otpResponse.body.requestId).toBeDefined();
@@ -26,6 +26,7 @@ describe('HelloHello API', () => {
     const sentOtp = getLastTestSms();
     expect(sentOtp).toBeDefined();
     expect(sentOtp.to).toBe('+251911234567');
+    expect(sentOtp.channel).toBe('whatsapp');
     expect(sentOtp.code).toMatch(/^\d{6}$/);
 
     const verifyResponse = await request(app)
