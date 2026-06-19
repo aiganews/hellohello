@@ -61,3 +61,17 @@ Raw OpenAPI YAML can be fetched from:
 ```bash
 http://localhost:8080/openapi.yaml
 ```
+
+CI / Deployment secrets
+----------------------
+
+To enable automated deploys from GitHub Actions you must add the following repository secrets in your GitHub repository settings (Settings → Secrets → Actions):
+
+- `AWS_ACCESS_KEY_ID` — AWS IAM user access key with permissions to push to ECR and update ECS services.
+- `AWS_SECRET_ACCESS_KEY` — The corresponding secret access key.
+- `AWS_REGION` — e.g. `us-east-1`.
+- `AWS_ACCOUNT_ID` — Your AWS account ID (numeric).
+- `AWS_ECS_CLUSTER_NAME` — The ECS cluster name to update (e.g. `hellohello-cluster`).
+- `AWS_ECS_SERVICE_NAME` — The ECS service name to force a new deployment (e.g. `hellohello-api-service`).
+
+Once these are configured the CI workflow will build the Docker image, push it to ECR, and trigger a new ECS deployment on merges to `main`.
