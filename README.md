@@ -93,7 +93,7 @@ export SMS_PROVIDER=twilio
 export TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 export TWILIO_AUTH_TOKEN=your-rotated-twilio-auth-token
 export TWILIO_FROM_NUMBER=+14155238886
-export TWILIO_WHATSAPP_CONTENT_SID=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+export TWILIO_WHATSAPP_CONTENT_SID=HX229f5a04fd0510ce1b071852155d3e75
 export TWILIO_WHATSAPP_STATUS_CALLBACK_URL=https://timberwolf-mastiff-9776.twil.io/hellohello-callback
 npm run start:local:prod
 ```
