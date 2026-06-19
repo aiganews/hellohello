@@ -21,6 +21,7 @@ describe('HelloHello API', () => {
     expect(otpResponse.status).toBe(200);
     expect(otpResponse.body.requestId).toBeDefined();
     expect(otpResponse.body.deliveryStatus).toBe('sent');
+    expect(otpResponse.body.delivery.provider).toBe('test');
 
     const sentOtp = getLastTestSms();
     expect(sentOtp).toBeDefined();
@@ -32,7 +33,7 @@ describe('HelloHello API', () => {
       .send({
         phoneE164: '+251911234567',
         code: sentOtp.code,
-        requestId: otpResponse.body.requestId,
+        otpRequestResponse: otpResponse.body,
         deviceId: 'device-123'
       });
 

@@ -47,6 +47,13 @@ async function sendWithTelnyx({ to, text }) {
   if (!response.ok) {
     throw createSmsError(`Telnyx SMS delivery failed with status ${response.status}.`);
   }
+
+  const body = await response.json().catch(() => ({}));
+  return {
+    provider: 'telnyx',
+    messageId: body?.data?.id || null,
+    status: body?.data?.status || 'sent'
+  };
 }
 
 async function sendWithTwilio({ to, text }) {
@@ -83,6 +90,13 @@ async function sendWithTwilio({ to, text }) {
   if (!response.ok) {
     throw createSmsError(`Twilio SMS delivery failed with status ${response.status}.`);
   }
+
+  const body = await response.json().catch(() => ({}));
+  return {
+    provider: 'twilio',
+    messageId: body.sid || null,
+    status: body.status || 'sent'
+  };
 }
 
 async function sendOtpSms({ to, code }) {
@@ -94,17 +108,15 @@ async function sendOtpSms({ to, code }) {
     if (provider === 'log') {
       console.info(`HelloHello OTP for ${to}: ${code}`);
     }
-    return;
+    return { provider, messageId: null, status: 'sent' };
   }
 
   if (provider === 'telnyx') {
-    await sendWithTelnyx({ to, text });
-    return;
+    return sendWithTelnyx({ to, text });
   }
 
   if (provider === 'twilio') {
-    await sendWithTwilio({ to, text });
-    return;
+    return sendWithTwilio({ to, text });
   }
 
   throw createSmsError(`Unsupported SMS provider: ${provider}`);

@@ -105,7 +105,20 @@ async function createOtpRequest(phoneE164, { channel = 'sms' } = {}) {
   };
   await db.collection('otp_requests').insertOne(request);
   try {
-    await sendOtpSms({ to: phoneE164, code });
+    const delivery = await sendOtpSms({ to: phoneE164, code });
+    request.delivery_provider = delivery.provider;
+    request.delivery_message_id = delivery.messageId;
+    request.delivery_status = delivery.status;
+    await db.collection('otp_requests').updateOne(
+      { id: requestId },
+      {
+        $set: {
+          delivery_provider: delivery.provider,
+          delivery_message_id: delivery.messageId,
+          delivery_status: delivery.status
+        }
+      }
+    );
   } catch (error) {
     await db.collection('otp_requests').deleteOne({ id: requestId });
     throw error;

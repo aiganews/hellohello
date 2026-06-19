@@ -86,7 +86,9 @@ export TWILIO_FROM_NUMBER=+12065550100
 npm run start:local:prod
 ```
 
-The OTP is generated per request and sent to the `phoneE164` mobile number submitted in Swagger or the API request.
+The app sends the equivalent of Twilio's `Messages.json` API call with `To` set from `phoneE164`, `From` set from `TWILIO_FROM_NUMBER`, and `Body` set to the generated OTP message. The OTP is generated per request and sent to the `phoneE164` mobile number submitted in Swagger or the API request.
+
+The verify request can use the `requestId` field directly, or pass the full OTP request response as `otpRequestResponse`. Verification still requires the six-digit code received by SMS.
 
 Stripe configuration should be provided through environment variables or a secret manager before using payment routes.
 

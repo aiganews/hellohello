@@ -476,11 +476,25 @@ components:
           example: 300
         deliveryStatus:
           type: string
-          enum: [sent]
+          example: queued
+        delivery:
+          type: object
+          description: Safe SMS provider delivery metadata. The OTP code and raw provider response are never returned.
+          properties:
+            provider:
+              type: string
+              enum: [telnyx, twilio, log, test]
+            messageId:
+              type: string
+              nullable: true
+              description: Provider message identifier, such as a Twilio SM... SID.
+            status:
+              type: string
+              example: queued
 
     OtpVerifyRequest:
       type: object
-      required: [phoneE164, code, requestId]
+      required: [phoneE164, code]
       properties:
         phoneE164:
           type: string
@@ -491,6 +505,9 @@ components:
         requestId:
           type: string
           format: uuid
+          description: Request ID from the OTP request response. Either requestId or otpRequestResponse.requestId is required.
+        otpRequestResponse:
+          $ref: '#/components/schemas/OtpRequestResponse'
         deviceId:
           type: string
 
