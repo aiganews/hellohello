@@ -74,7 +74,9 @@ aws secretsmanager put-secret-value \
     "TWILIO_ACCOUNT_SID": "",
     "TWILIO_AUTH_TOKEN": "",
     "TWILIO_FROM_NUMBER": "",
-    "TWILIO_MESSAGING_SERVICE_SID": ""
+    "TWILIO_MESSAGING_SERVICE_SID": "",
+    "TWILIO_WHATSAPP_FROM": "",
+    "TWILIO_WHATSAPP_CONTENT_SID": ""
   }'
 ```
 
@@ -82,7 +84,9 @@ Use real production values. Do not commit them.
 
 For Telnyx, set `sms_provider = "telnyx"` in `terraform.tfvars` and provide `TELNYX_API_KEY` plus either `TELNYX_FROM_NUMBER` or `TELNYX_MESSAGING_PROFILE_ID`. `TELNYX_FROM_NUMBER` must be an SMS-enabled E.164 number.
 
-For Twilio, set `sms_provider = "twilio"` in `terraform.tfvars` and provide `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`. Twilio Account SIDs start with `AC`; Messaging Service SIDs start with `MG`.
+For Twilio SMS, set `sms_provider = "twilio"` in `terraform.tfvars` and provide `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and either `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`. Twilio Account SIDs start with `AC`; Messaging Service SIDs start with `MG`.
+
+For Twilio WhatsApp template OTP, also provide `TWILIO_WHATSAPP_FROM` such as `whatsapp:+14155238886` and `TWILIO_WHATSAPP_CONTENT_SID` such as `HX...`. The app sends `ContentVariables` with the generated OTP as variable `1`.
 
 ## Configure GitHub Actions CD
 

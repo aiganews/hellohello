@@ -462,7 +462,7 @@ components:
           description: E.164 mobile number that will receive the OTP SMS.
         channel:
           type: string
-          enum: [sms]
+          enum: [sms, whatsapp]
           default: sms
 
     OtpRequestResponse:
@@ -500,7 +500,7 @@ components:
           type: string
         code:
           type: string
-          description: Six-digit code received by SMS.
+          description: Six-digit code received by SMS or WhatsApp.
           example: "847392"
         requestId:
           type: string

@@ -86,9 +86,31 @@ export TWILIO_FROM_NUMBER=+12065550100
 npm run start:local:prod
 ```
 
+For Twilio WhatsApp template OTP:
+
+```bash
+export SMS_PROVIDER=twilio
+export TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+export TWILIO_AUTH_TOKEN=your-rotated-twilio-auth-token
+export TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+export TWILIO_WHATSAPP_CONTENT_SID=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+npm run start:local:prod
+```
+
+Then request OTP with:
+
+```json
+{
+  "phoneE164": "+12065366291",
+  "channel": "whatsapp"
+}
+```
+
 The app sends the equivalent of Twilio's `Messages.json` API call with `To` set from `phoneE164`, `From` set from `TWILIO_FROM_NUMBER`, and `Body` set to the generated OTP message. The OTP is generated per request and sent to the `phoneE164` mobile number submitted in Swagger or the API request.
 
-The verify request can use the `requestId` field directly, or pass the full OTP request response as `otpRequestResponse`. Verification still requires the six-digit code received by SMS.
+For WhatsApp, the app sends `To=whatsapp:<phoneE164>`, `From=TWILIO_WHATSAPP_FROM`, `ContentSid=TWILIO_WHATSAPP_CONTENT_SID`, and `ContentVariables={"1":"<generated otp>"}`.
+
+The verify request can use the `requestId` field directly, or pass the full OTP request response as `otpRequestResponse`. Verification still requires the six-digit code received by SMS or WhatsApp.
 
 Stripe configuration should be provided through environment variables or a secret manager before using payment routes.
 

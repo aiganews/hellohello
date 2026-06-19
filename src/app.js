@@ -165,8 +165,8 @@ v1.post('/auth/otp/request', asyncHandler(async (req, res) => {
   if (!isValidE164(phoneE164)) {
     return res.status(400).json({ code: 'INVALID_REQUEST', message: 'phoneE164 must be a valid E.164 phone number' });
   }
-  if (channel !== 'sms') {
-    return res.status(400).json({ code: 'INVALID_REQUEST', message: 'Only sms OTP delivery is supported' });
+  if (!['sms', 'whatsapp'].includes(channel)) {
+    return res.status(400).json({ code: 'INVALID_REQUEST', message: 'channel must be sms or whatsapp' });
   }
 
   try {

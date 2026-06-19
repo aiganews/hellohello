@@ -105,7 +105,7 @@ async function createOtpRequest(phoneE164, { channel = 'sms' } = {}) {
   };
   await db.collection('otp_requests').insertOne(request);
   try {
-    const delivery = await sendOtpSms({ to: phoneE164, code });
+    const delivery = await sendOtpSms({ to: phoneE164, code, channel });
     request.delivery_provider = delivery.provider;
     request.delivery_message_id = delivery.messageId;
     request.delivery_status = delivery.status;

@@ -38,4 +38,34 @@ describe('SMS providers', () => {
       status: 'queued'
     });
   });
+
+  it('sends OTP messages through Twilio WhatsApp templates', async () => {
+    process.env.SMS_PROVIDER = 'twilio';
+    process.env.TWILIO_ACCOUNT_SID = 'AC00000000000000000000000000000000';
+    process.env.TWILIO_AUTH_TOKEN = 'test-auth-token';
+    process.env.TWILIO_WHATSAPP_FROM = 'whatsapp:+14155238886';
+    process.env.TWILIO_WHATSAPP_CONTENT_SID = 'HX00000000000000000000000000000000';
+
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ sid: 'SM11111111111111111111111111111111', status: 'queued' })
+    });
+    global.fetch = fetchMock;
+
+    const delivery = await sendOtpSms({ to: '+12065366291', code: '409173', channel: 'whatsapp' });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://api.twilio.com/2010-04-01/Accounts/AC00000000000000000000000000000000/Messages.json');
+    expect(options.method).toBe('POST');
+    expect(options.body.get('To')).toBe('whatsapp:+12065366291');
+    expect(options.body.get('From')).toBe('whatsapp:+14155238886');
+    expect(options.body.get('ContentSid')).toBe('HX00000000000000000000000000000000');
+    expect(JSON.parse(options.body.get('ContentVariables'))).toEqual({ 1: '409173' });
+    expect(delivery).toEqual({
+      provider: 'twilio',
+      messageId: 'SM11111111111111111111111111111111',
+      status: 'queued'
+    });
+  });
 });

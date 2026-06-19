@@ -56,7 +56,24 @@ async function sendWithTelnyx({ to, text }) {
   };
 }
 
-async function sendWithTwilio({ to, text }) {
+function buildTwilioAuth(accountSid, authToken) {
+  return Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+}
+
+function normalizeWhatsAppAddress(phoneE164) {
+  return phoneE164.startsWith('whatsapp:') ? phoneE164 : `whatsapp:${phoneE164}`;
+}
+
+async function parseTwilioDelivery(response) {
+  const responseBody = await response.json().catch(() => ({}));
+  return {
+    provider: 'twilio',
+    messageId: responseBody.sid || null,
+    status: responseBody.status || 'sent'
+  };
+}
+
+async function sendWithTwilioSms({ to, text }) {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_FROM_NUMBER;
@@ -77,7 +94,7 @@ async function sendWithTwilio({ to, text }) {
     body.set('MessagingServiceSid', messagingServiceSid);
   }
 
-  const auth = Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+  const auth = buildTwilioAuth(accountSid, authToken);
   const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
     method: 'POST',
     headers: {
@@ -91,20 +108,49 @@ async function sendWithTwilio({ to, text }) {
     throw createSmsError(`Twilio SMS delivery failed with status ${response.status}.`);
   }
 
-  const responseBody = await response.json().catch(() => ({}));
-  return {
-    provider: 'twilio',
-    messageId: responseBody.sid || null,
-    status: responseBody.status || 'sent'
-  };
+  return parseTwilioDelivery(response);
 }
 
-async function sendOtpSms({ to, code }) {
+async function sendWithTwilioWhatsApp({ to, code }) {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_WHATSAPP_FROM;
+  const contentSid = process.env.TWILIO_WHATSAPP_CONTENT_SID || process.env.TWILIO_CONTENT_SID;
+
+  if (!accountSid || !authToken || !from || !contentSid) {
+    throw createSmsError('Twilio WhatsApp OTP is not configured.');
+  }
+
+  const body = new URLSearchParams({
+    From: normalizeWhatsAppAddress(from),
+    To: normalizeWhatsAppAddress(to),
+    ContentSid: contentSid,
+    ContentVariables: JSON.stringify({ 1: code })
+  });
+
+  const auth = buildTwilioAuth(accountSid, authToken);
+  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body
+  });
+
+  if (!response.ok) {
+    throw createSmsError(`Twilio WhatsApp delivery failed with status ${response.status}.`);
+  }
+
+  return parseTwilioDelivery(response);
+}
+
+async function sendOtpSms({ to, code, channel = 'sms' }) {
   const provider = getSmsProvider();
   const text = buildOtpMessage(code);
 
   if (provider === 'log' || provider === 'test') {
-    testMessages.push({ to, text, code, createdAt: new Date() });
+    testMessages.push({ to, text, code, channel, createdAt: new Date() });
     if (provider === 'log') {
       console.info(`HelloHello OTP for ${to}: ${code}`);
     }
@@ -116,7 +162,10 @@ async function sendOtpSms({ to, code }) {
   }
 
   if (provider === 'twilio') {
-    return sendWithTwilio({ to, text });
+    if (channel === 'whatsapp') {
+      return sendWithTwilioWhatsApp({ to, code });
+    }
+    return sendWithTwilioSms({ to, text });
   }
 
   throw createSmsError(`Unsupported SMS provider: ${provider}`);
