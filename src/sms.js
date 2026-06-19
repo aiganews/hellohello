@@ -91,11 +91,11 @@ async function sendWithTwilio({ to, text }) {
     throw createSmsError(`Twilio SMS delivery failed with status ${response.status}.`);
   }
 
-  const body = await response.json().catch(() => ({}));
+  const responseBody = await response.json().catch(() => ({}));
   return {
     provider: 'twilio',
-    messageId: body.sid || null,
-    status: body.status || 'sent'
+    messageId: responseBody.sid || null,
+    status: responseBody.status || 'sent'
   };
 }
 
