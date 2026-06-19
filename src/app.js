@@ -183,7 +183,11 @@ v1.post('/auth/otp/request', asyncHandler(async (req, res) => {
     });
   } catch (error) {
     if (error.code === 'SMS_DELIVERY_FAILED') {
-      return res.status(error.status || 503).json({ code: 'OTP_DELIVERY_FAILED', message: 'Unable to send OTP to that phone number' });
+      return res.status(error.status || 503).json({
+        code: 'OTP_DELIVERY_FAILED',
+        message: 'Unable to send OTP to that phone number',
+        details: error.details || {}
+      });
     }
     throw error;
   }

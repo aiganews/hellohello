@@ -68,4 +68,36 @@ describe('SMS providers', () => {
       status: 'queued'
     });
   });
+
+  it('includes safe Twilio error details when WhatsApp delivery fails', async () => {
+    process.env.SMS_PROVIDER = 'twilio';
+    process.env.TWILIO_ACCOUNT_SID = 'AC00000000000000000000000000000000';
+    process.env.TWILIO_AUTH_TOKEN = 'test-auth-token';
+    process.env.TWILIO_WHATSAPP_FROM = 'whatsapp:+14155238886';
+    process.env.TWILIO_WHATSAPP_CONTENT_SID = 'HX00000000000000000000000000000000';
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({
+        code: 20003,
+        message: 'Authenticate',
+        more_info: 'https://www.twilio.com/docs/errors/20003'
+      })
+    });
+
+    await expect(sendOtpSms({ to: '+12065366291', code: '409173', channel: 'whatsapp' }))
+      .rejects
+      .toMatchObject({
+        code: 'SMS_DELIVERY_FAILED',
+        details: {
+          provider: 'twilio',
+          channel: 'whatsapp',
+          httpStatus: 401,
+          providerCode: 20003,
+          providerMessage: 'Authenticate',
+          moreInfo: 'https://www.twilio.com/docs/errors/20003'
+        }
+      });
+  });
 });

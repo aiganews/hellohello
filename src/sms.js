@@ -8,11 +8,22 @@ function buildOtpMessage(code) {
   return `Your HelloHello verification code is ${code}. It expires in 5 minutes.`;
 }
 
-function createSmsError(message) {
+function createSmsError(message, details = {}) {
   const error = new Error(message);
   error.code = 'SMS_DELIVERY_FAILED';
   error.status = 503;
+  error.details = details;
   return error;
+}
+
+async function parseProviderError(response) {
+  const body = await response.json().catch(() => ({}));
+  return {
+    httpStatus: response.status,
+    providerCode: body.code || body.errors?.[0]?.code || null,
+    providerMessage: body.message || body.errors?.[0]?.detail || body.errors?.[0]?.title || null,
+    moreInfo: body.more_info || null
+  };
 }
 
 async function sendWithTelnyx({ to, text }) {
@@ -21,7 +32,13 @@ async function sendWithTelnyx({ to, text }) {
   const messagingProfileId = process.env.TELNYX_MESSAGING_PROFILE_ID;
 
   if (!apiKey || (!from && !messagingProfileId)) {
-    throw createSmsError('Telnyx SMS is not configured.');
+    throw createSmsError('Telnyx SMS is not configured.', {
+      provider: 'telnyx',
+      missing: [
+        !apiKey ? 'TELNYX_API_KEY' : null,
+        !from && !messagingProfileId ? 'TELNYX_FROM_NUMBER or TELNYX_MESSAGING_PROFILE_ID' : null
+      ].filter(Boolean)
+    });
   }
 
   const payload = {
@@ -45,7 +62,10 @@ async function sendWithTelnyx({ to, text }) {
   });
 
   if (!response.ok) {
-    throw createSmsError(`Telnyx SMS delivery failed with status ${response.status}.`);
+    throw createSmsError('Telnyx SMS delivery failed.', {
+      provider: 'telnyx',
+      ...(await parseProviderError(response))
+    });
   }
 
   const body = await response.json().catch(() => ({}));
@@ -80,7 +100,15 @@ async function sendWithTwilioSms({ to, text }) {
   const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
 
   if (!accountSid || !authToken || (!from && !messagingServiceSid)) {
-    throw createSmsError('Twilio SMS is not configured.');
+    throw createSmsError('Twilio SMS is not configured.', {
+      provider: 'twilio',
+      channel: 'sms',
+      missing: [
+        !accountSid ? 'TWILIO_ACCOUNT_SID' : null,
+        !authToken ? 'TWILIO_AUTH_TOKEN' : null,
+        !from && !messagingServiceSid ? 'TWILIO_FROM_NUMBER or TWILIO_MESSAGING_SERVICE_SID' : null
+      ].filter(Boolean)
+    });
   }
 
   const body = new URLSearchParams({
@@ -105,7 +133,11 @@ async function sendWithTwilioSms({ to, text }) {
   });
 
   if (!response.ok) {
-    throw createSmsError(`Twilio SMS delivery failed with status ${response.status}.`);
+    throw createSmsError('Twilio SMS delivery failed.', {
+      provider: 'twilio',
+      channel: 'sms',
+      ...(await parseProviderError(response))
+    });
   }
 
   return parseTwilioDelivery(response);
@@ -118,7 +150,16 @@ async function sendWithTwilioWhatsApp({ to, code }) {
   const contentSid = process.env.TWILIO_WHATSAPP_CONTENT_SID || process.env.TWILIO_CONTENT_SID;
 
   if (!accountSid || !authToken || !from || !contentSid) {
-    throw createSmsError('Twilio WhatsApp OTP is not configured.');
+    throw createSmsError('Twilio WhatsApp OTP is not configured.', {
+      provider: 'twilio',
+      channel: 'whatsapp',
+      missing: [
+        !accountSid ? 'TWILIO_ACCOUNT_SID' : null,
+        !authToken ? 'TWILIO_AUTH_TOKEN' : null,
+        !from ? 'TWILIO_WHATSAPP_FROM' : null,
+        !contentSid ? 'TWILIO_WHATSAPP_CONTENT_SID' : null
+      ].filter(Boolean)
+    });
   }
 
   const body = new URLSearchParams({
@@ -139,7 +180,11 @@ async function sendWithTwilioWhatsApp({ to, code }) {
   });
 
   if (!response.ok) {
-    throw createSmsError(`Twilio WhatsApp delivery failed with status ${response.status}.`);
+    throw createSmsError('Twilio WhatsApp delivery failed.', {
+      provider: 'twilio',
+      channel: 'whatsapp',
+      ...(await parseProviderError(response))
+    });
   }
 
   return parseTwilioDelivery(response);
@@ -168,7 +213,7 @@ async function sendOtpSms({ to, code, channel = 'sms' }) {
     return sendWithTwilioSms({ to, text });
   }
 
-  throw createSmsError(`Unsupported SMS provider: ${provider}`);
+  throw createSmsError(`Unsupported SMS provider: ${provider}`, { provider });
 }
 
 function getLastTestSms() {
