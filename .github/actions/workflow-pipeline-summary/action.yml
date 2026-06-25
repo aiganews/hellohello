@@ -1,0 +1,93 @@
+name: Workflow Pipeline Summary
+description: Render a workflow-level green/red job sequence in the GitHub Actions summary
+
+inputs:
+  title:
+    description: Heading shown above the pipeline
+    required: false
+    default: Workflow Pipeline
+  exclude-jobs:
+    description: Comma-separated job names to omit from the visualization
+    required: false
+    default: pipeline-summary
+
+runs:
+  using: composite
+  steps:
+    - name: Render workflow pipeline
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const title = ${{ toJSON(inputs.title) }};
+          const exclude = new Set(
+            ${{ toJSON(inputs.exclude-jobs) }}.split(',').map((s) => s.trim()).filter(Boolean)
+          );
+
+          const { data: { jobs } } = await github.rest.actions.listJobsForWorkflowRun({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId,
+            per_page: 100
+          });
+
+          const colorFor = (conclusion) => {
+            if (conclusion === 'success') return '#2ea043';
+            if (conclusion === 'failure') return '#da3633';
+            if (conclusion === 'cancelled') return '#6e7681';
+            if (conclusion === 'skipped') return '#d29922';
+            return '#6e7681';
+          };
+
+          const iconFor = (conclusion) => {
+            if (conclusion === 'success') return '✓';
+            if (conclusion === 'failure') return '✗';
+            if (conclusion === 'cancelled') return '⊘';
+            if (conclusion === 'skipped') return '○';
+            return '?';
+          };
+
+          const badgeFor = (conclusion) => {
+            if (conclusion === 'success') return '🟢 success';
+            if (conclusion === 'failure') return '🔴 failure';
+            if (conclusion === 'cancelled') return '⚪ cancelled';
+            if (conclusion === 'skipped') return '🟡 skipped';
+            return conclusion || 'pending';
+          };
+
+          const stages = jobs
+            .filter((job) => !exclude.has(job.name))
+            .sort((a, b) => new Date(a.started_at || 0) - new Date(b.started_at || 0));
+
+          let html = `<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;margin:12px 0;">`;
+          html += `<div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">`;
+
+          stages.forEach((job, index) => {
+            const conclusion = job.conclusion || job.status || 'pending';
+            const color = colorFor(conclusion);
+            const icon = iconFor(conclusion);
+            html += `<div style="background:${color};color:#fff;padding:10px 16px;border-radius:6px;font-weight:600;font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,.2);">${icon} ${job.name}</div>`;
+            if (index < stages.length - 1) {
+              html += `<span style="color:#8b949e;font-size:18px;font-weight:bold;">→</span>`;
+            }
+          });
+
+          html += `</div></div>`;
+
+          let table = `| Job | Status |\n|-----|--------|\n`;
+          for (const job of stages) {
+            const conclusion = job.conclusion || job.status || 'pending';
+            table += `| ${job.name} | ${badgeFor(conclusion)} |\n`;
+          }
+
+          const failed = stages.some((job) => job.conclusion === 'failure');
+
+          await core.summary
+            .addHeading(title, 2)
+            .addRaw(html, true)
+            .addHeading('Job details', 3)
+            .addRaw(table)
+            .write();
+
+          if (failed) {
+            core.setFailed('One or more workflow jobs failed.');
+          }

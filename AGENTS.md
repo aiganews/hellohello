@@ -28,6 +28,8 @@ GitHub Actions workflows that run these agents:
 | `.github/workflows/automation-agents.yml` | PR opened/updated |
 | `.github/workflows/fix-ci.yml` | CI workflow failure |
 
+Pipeline visualizations (green = success, red = failure) appear in each job's **Summary** tab and in the **Pipeline Summary** job via `.github/actions/pipeline-step`, `pipeline-render`, and `workflow-pipeline-summary`.
+
 ## Secrets
 
 - `CURSOR_API_KEY` — required for GitHub Actions CLI agents ([Cursor dashboard](https://cursor.com/dashboard))
