@@ -27,6 +27,6 @@ runs:
         ORDER="${{ inputs.order }}"
         NAME="${{ inputs.name }}"
         STATUS="${{ inputs.status }}"
-        STEP=$(jq -nc --arg name "$NAME" --arg status "$STATUS" --argjson order "$ORDER" \
-          '{name: $name, status: $status, order: $order}')
-        jq -s 'add | sort_by(.order)' "$FILE" <(echo "$STEP") > "${FILE}.tmp" && mv "${FILE}.tmp" "$FILE"
+        jq --arg name "$NAME" --arg status "$STATUS" --argjson order "$ORDER" \
+          '. + [{name: $name, status: $status, order: $order}] | sort_by(.order)' \
+          "$FILE" > "${FILE}.tmp" && mv "${FILE}.tmp" "$FILE"

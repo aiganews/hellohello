@@ -10,6 +10,10 @@ inputs:
     description: Comma-separated job names to omit from the visualization
     required: false
     default: pipeline-summary
+  fail-on-error:
+    description: Mark this job failed when upstream jobs failed
+    required: false
+    default: 'false'
 
 runs:
   using: composite
@@ -80,6 +84,7 @@ runs:
           }
 
           const failed = stages.some((job) => job.conclusion === 'failure');
+          const failOnError = ${{ toJSON(inputs.fail-on-error) }} === 'true';
 
           await core.summary
             .addHeading(title, 2)
@@ -88,6 +93,6 @@ runs:
             .addRaw(table)
             .write();
 
-          if (failed) {
+          if (failOnError && failed) {
             core.setFailed('One or more workflow jobs failed.');
           }
