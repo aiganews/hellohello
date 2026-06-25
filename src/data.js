@@ -1,7 +1,20 @@
 import crypto from 'crypto';
 import { getDb, client } from './db.js';
+import { sendOtp } from './messaging.js';
 
 const now = () => new Date();
+
+function hashOtp(code) {
+  const secret = process.env.OTP_HASH_SECRET || process.env.ACCESS_TOKEN_SECRET || 'hellohello-otp-dev';
+  return crypto.createHmac('sha256', secret).update(code).digest('hex');
+}
+
+function generateOtpCode() {
+  if (process.env.NODE_ENV === 'test' || process.env.OTP_DEV_CODE) {
+    return process.env.OTP_DEV_CODE || '123456';
+  }
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
 
 function normalizeCountry(phoneE164) {
   if (phoneE164.startsWith('+1')) return 'US';
@@ -64,19 +77,21 @@ async function createUser(phoneE164, { email = null, role = 'user' } = {}) {
   return user;
 }
 
-async function createOtpRequest(phoneE164) {
+async function createOtpRequest(phoneE164, channel = 'sms') {
   const db = await getDb();
+  const code = generateOtpCode();
   const request = {
     id: crypto.randomUUID(),
     phone_e164: phoneE164,
-    code_hash: '123456',
-    channel: 'sms',
+    code_hash: hashOtp(code),
+    channel,
     expires_at: new Date(Date.now() + 300_000),
     verified_at: null,
     attempt_count: 0,
     created_at: now()
   };
   await db.collection('otp_requests').insertOne(request);
+  await sendOtp(phoneE164, code, channel);
   return request;
 }
 
@@ -85,7 +100,7 @@ async function verifyOtp(requestId, phoneE164, code) {
   const request = await db.collection('otp_requests').findOne({ id: requestId, phone_e164: phoneE164 });
   if (!request) return null;
   if (request.expires_at < now()) return null;
-  if (request.code_hash !== code) return null;
+  if (hashOtp(code) !== request.code_hash) return null;
   await db.collection('otp_requests').updateOne({ id: requestId }, { $set: { verified_at: now() } });
   return createUser(phoneE164);
 }

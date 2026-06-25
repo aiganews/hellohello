@@ -154,12 +154,22 @@ v1.get('/', (req, res) => {
 });
 
 v1.post('/auth/otp/request', asyncHandler(async (req, res) => {
-  const { phoneE164 } = req.body;
+  const { phoneE164, channel = 'sms' } = req.body;
   if (!phoneE164) {
     return res.status(400).json({ code: 'INVALID_REQUEST', message: 'phoneE164 is required' });
   }
-  const otp = await createOtpRequest(phoneE164);
-  res.json({ requestId: otp.id, expiresInSec: 300 });
+  const allowedChannels = ['sms', 'whatsapp', 'voice'];
+  if (!allowedChannels.includes(channel)) {
+    return res.status(400).json({
+      code: 'INVALID_REQUEST',
+      message: `channel must be one of: ${allowedChannels.join(', ')}`
+    });
+  }
+  if (channel === 'voice') {
+    return res.status(501).json({ code: 'NOT_IMPLEMENTED', message: 'Voice OTP is not implemented yet' });
+  }
+  const otp = await createOtpRequest(phoneE164, channel);
+  res.json({ requestId: otp.id, expiresInSec: 300, channel: otp.channel });
 }));
 
 v1.post('/auth/otp/verify', asyncHandler(async (req, res) => {

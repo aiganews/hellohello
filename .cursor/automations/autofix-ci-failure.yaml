@@ -1,0 +1,21 @@
+name: Autofix CI Failure
+enabled: true
+description: Attempt a minimal, test-verified fix when CI fails on a pull request.
+
+trigger:
+  - type: github
+    event: workflow_run_completed
+    workflow: CI
+    conclusion: failure
+
+repository:
+  mode: single
+  branch: main
+
+tools:
+  - open_pull_request
+  - comment_on_pull_request
+  - memories
+
+prompt_file: .cursor/automations/prompts/autofix-ci-failure.md
+github_workflow: .github/workflows/fix-ci.yml

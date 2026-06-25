@@ -1,0 +1,32 @@
+name: Pipeline Step
+description: Record a pipeline step result for the run summary visualization
+
+inputs:
+  name:
+    description: Display name for this step
+    required: true
+  status:
+    description: Step outcome — success, failure, skipped, or cancelled
+    required: true
+  order:
+    description: Sequence number (lower runs first in the visualization)
+    required: false
+    default: '0'
+
+runs:
+  using: composite
+  steps:
+    - name: Record pipeline step
+      shell: bash
+      run: |
+        FILE="${RUNNER_TEMP}/pipeline-steps.json"
+        mkdir -p "$(dirname "$FILE")"
+        if [ ! -f "$FILE" ]; then
+          echo "[]" > "$FILE"
+        fi
+        ORDER="${{ inputs.order }}"
+        NAME="${{ inputs.name }}"
+        STATUS="${{ inputs.status }}"
+        jq --arg name "$NAME" --arg status "$STATUS" --argjson order "$ORDER" \
+          '. + [{name: $name, status: $status, order: $order}] | sort_by(.order)' \
+          "$FILE" > "${FILE}.tmp" && mv "${FILE}.tmp" "$FILE"

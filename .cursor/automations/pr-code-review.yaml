@@ -1,0 +1,21 @@
+name: PR Code Review
+enabled: true
+description: Review pull request changes for bugs, security issues, and API contract drift.
+
+trigger:
+  - type: github
+    event: pull_request_opened
+  - type: github
+    event: pull_request_pushed
+
+repository:
+  mode: single
+  branch: main
+
+tools:
+  - comment_on_pull_request
+  - request_reviewers
+  - memories
+
+prompt_file: .cursor/automations/prompts/pr-code-review.md
+github_workflow: .github/workflows/automation-agents.yml

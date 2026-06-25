@@ -1,0 +1,183 @@
+name: Automation Agents
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      agent:
+        description: Which automation agent to run
+        required: true
+        default: pr-code-review
+        type: choice
+        options:
+          - pr-code-review
+          - pr-test-coverage
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+
+jobs:
+  pr-review:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'pr-code-review')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Record checkout
+        if: always()
+        uses: ./.github/actions/pipeline-step
+        with:
+          name: Checkout
+          status: ${{ steps.checkout.outcome }}
+          order: '1'
+
+      - name: Install Cursor CLI
+        id: install-cli
+        run: |
+          curl https://cursor.com/install -fsS | bash
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+
+      - name: Record Cursor CLI install
+        if: always()
+        uses: ./.github/actions/pipeline-step
+        with:
+          name: Install Cursor CLI
+          status: ${{ steps.install-cli.outcome }}
+          order: '2'
+
+      - name: Run PR code review agent
+        id: agent
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        run: |
+          if [ -z "$CURSOR_API_KEY" ]; then
+            echo "CURSOR_API_KEY secret is not configured."
+            echo "Automation definition: .cursor/automations/pr-code-review.yaml"
+            exit 0
+          fi
+          agent -p "$(cat .cursor/automations/prompts/pr-code-review.md)" --model gpt-5 --force
+
+      - name: Record agent run
+        if: always()
+        uses: ./.github/actions/pipeline-step
+        with:
+          name: PR Code Review Agent
+          status: ${{ steps.agent.outcome }}
+          order: '3'
+
+      - name: Pipeline visualization
+        if: always()
+        uses: ./.github/actions/pipeline-render
+        with:
+          title: Automation Pipeline — PR Code Review
+          fail-on-error: 'false'
+
+  test-coverage:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.agent == 'pr-test-coverage')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Record checkout
+        if: always()
+        uses: ./.github/actions/pipeline-step
+        with:
+          name: Checkout
+          status: ${{ steps.checkout.outcome }}
+          order: '1'
+
+      - name: Use Node.js 20.x
+        id: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Record setup Node
+        if: always()
+        uses: ./.github/actions/pipeline-step
+        with:
+          name: Setup Node 20.x
+          status: ${{ steps.setup-node.outcome }}
+          order: '2'
+
+      - name: Install dependencies
+        id: install
+        run: npm ci
+
+      - name: Record install
+        if: always()
+        uses: ./.github/actions/pipeline-step
+        with:
+          name: Install
+          status: ${{ steps.install.outcome }}
+          order: '3'
+
+      - name: Install Cursor CLI
+        id: install-cli
+        run: |
+          curl https://cursor.com/install -fsS | bash
+          echo "$HOME/.cursor/bin" >> $GITHUB_PATH
+
+      - name: Record Cursor CLI install
+        if: always()
+        uses: ./.github/actions/pipeline-step
+        with:
+          name: Install Cursor CLI
+          status: ${{ steps.install-cli.outcome }}
+          order: '4'
+
+      - name: Run test coverage agent
+        id: agent
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          NODE_ENV: test
+        run: |
+          if [ -z "$CURSOR_API_KEY" ]; then
+            echo "CURSOR_API_KEY secret is not configured."
+            echo "Automation definition: .cursor/automations/pr-test-coverage.yaml"
+            exit 0
+          fi
+          npm test
+          agent -p "$(cat .cursor/automations/prompts/pr-test-coverage.md)" --model gpt-5 --force
+
+      - name: Record agent run
+        if: always()
+        uses: ./.github/actions/pipeline-step
+        with:
+          name: Test Coverage Agent
+          status: ${{ steps.agent.outcome }}
+          order: '5'
+
+      - name: Pipeline visualization
+        if: always()
+        uses: ./.github/actions/pipeline-render
+        with:
+          title: Automation Pipeline — Test Coverage
+          fail-on-error: 'false'
+
+  pipeline-summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [pr-review, test-coverage]
+    if: always()
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Workflow pipeline visualization
+        uses: ./.github/actions/workflow-pipeline-summary
+        with:
+          title: Automation Agents — Full Pipeline
+          exclude-jobs: Pipeline Summary

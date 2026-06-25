@@ -48,16 +48,22 @@ async function startMemoryServer() {
   return memoryServer.getUri('hellohello');
 }
 
+function envFlag(name) {
+  const value = process.env[name];
+  if (!value) return false;
+  return ['true', '1', 'yes', 'on'].includes(value.toLowerCase().trim());
+}
+
 async function buildConnectionUri() {
   const useInMemory =
-    process.env.USE_IN_MEMORY_MONGO === 'true' ||
+    envFlag('USE_IN_MEMORY_MONGO') ||
     process.env.NODE_ENV === 'test';
 
   if (useInMemory) {
     return startMemoryServer();
   }
 
-  if (process.env.MONGODB_URI) {
+  if (process.env.MONGODB_URI?.trim()) {
     return normalizeMongoUri(process.env.MONGODB_URI);
   }
 
@@ -65,7 +71,10 @@ async function buildConnectionUri() {
     return startMemoryServer();
   }
 
-  throw new Error('MONGODB_URI is required when not running in development/test mode.');
+  throw new Error(
+    'MONGODB_URI is required when not running in development/test mode. ' +
+    'For local production-style runs, use: npm run start:local:prod'
+  );
 }
 
 function extractDbName(connectionString) {

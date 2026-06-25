@@ -1,0 +1,23 @@
+name: Triage CI Failure
+enabled: true
+description: Investigate failed GitHub Actions CI runs and post findings on the pull request.
+
+trigger:
+  - type: github
+    event: workflow_run_completed
+    workflow: CI
+    conclusion: failure
+  - type: github
+    event: ci_completed
+    check: CI
+
+repository:
+  mode: single
+  branch: main
+
+tools:
+  - comment_on_pull_request
+  - memories
+
+prompt_file: .cursor/automations/prompts/triage-ci-failure.md
+github_workflow: .github/workflows/fix-ci.yml

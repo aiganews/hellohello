@@ -1,0 +1,98 @@
+name: Pipeline Render
+description: Render a green/red step sequence visualization to the GitHub Actions job summary
+
+inputs:
+  title:
+    description: Heading shown above the pipeline
+    required: false
+    default: Pipeline
+  fail-on-error:
+    description: Exit with failure if any recorded step failed
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Render pipeline visualization
+      shell: bash
+      run: |
+        FILE="${RUNNER_TEMP}/pipeline-steps.json"
+        TITLE="${{ inputs.title }}"
+        FAIL_ON_ERROR="${{ inputs.fail-on-error }}"
+
+        if [ ! -f "$FILE" ]; then
+          echo "No pipeline steps recorded." >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+
+        color_for() {
+          case "$1" in
+            success) echo "#2ea043" ;;
+            failure) echo "#da3633" ;;
+            cancelled) echo "#6e7681" ;;
+            skipped) echo "#d29922" ;;
+            *) echo "#6e7681" ;;
+          esac
+        }
+
+        icon_for() {
+          case "$1" in
+            success) echo "✓" ;;
+            failure) echo "✗" ;;
+            cancelled) echo "⊘" ;;
+            skipped) echo "○" ;;
+            *) echo "?" ;;
+          esac
+        }
+
+        HAS_FAILURE=0
+        {
+          echo "## ${TITLE}"
+          echo ""
+          echo '<div style="font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif; margin: 12px 0;">'
+          echo '<div style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px;">'
+
+          COUNT=$(jq 'length' "$FILE")
+          i=0
+          while [ "$i" -lt "$COUNT" ]; do
+            NAME=$(jq -r ".[$i].name" "$FILE")
+            STATUS=$(jq -r ".[$i].status" "$FILE")
+            COLOR=$(color_for "$STATUS")
+            ICON=$(icon_for "$STATUS")
+
+            [ "$STATUS" = "failure" ] && HAS_FAILURE=1
+
+            echo "<div style=\"background:${COLOR}; color:#fff; padding:10px 16px; border-radius:6px; font-weight:600; font-size:14px; box-shadow:0 1px 3px rgba(0,0,0,.2);\">${ICON} ${NAME}</div>"
+
+            NEXT=$((i + 1))
+            if [ "$NEXT" -lt "$COUNT" ]; then
+              echo '<span style="color:#8b949e; font-size:18px; font-weight:bold;">→</span>'
+            fi
+            i=$NEXT
+          done
+
+          echo '</div></div>'
+          echo ""
+          echo "### Step details"
+          echo ""
+          echo "| Step | Status |"
+          echo "|------|--------|"
+          jq -r '.[] | "| \(.name) | \(.status) |"' "$FILE" | while IFS='|' read -r _ name status _; do
+            name=$(echo "$name" | xargs)
+            status=$(echo "$status" | xargs)
+            case "$status" in
+              success) MARK="🟢 success" ;;
+              failure) MARK="🔴 failure" ;;
+              skipped) MARK="🟡 skipped" ;;
+              cancelled) MARK="⚪ cancelled" ;;
+              *) MARK="$status" ;;
+            esac
+            echo "| ${name} | ${MARK} |"
+          done
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        if [ "$FAIL_ON_ERROR" = "true" ] && [ "$HAS_FAILURE" -eq 1 ]; then
+          echo "::error::One or more pipeline steps failed."
+          exit 1
+        fi

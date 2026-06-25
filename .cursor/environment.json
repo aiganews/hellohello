@@ -1,0 +1,10 @@
+{
+  "install": "npm ci",
+  "start": "npm run start:local:prod",
+  "terminals": [
+    {
+      "name": "api",
+      "command": "npm run start:local:prod"
+    }
+  ]
+}

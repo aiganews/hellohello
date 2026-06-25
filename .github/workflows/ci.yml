@@ -1,7 +1,5 @@
 name: CI
 
-name: CI
-
 on:
   push:
     branches: [ main ]
@@ -15,21 +13,79 @@ jobs:
         node-version: [18.x, 20.x]
     steps:
       - name: Checkout repository
+        id: checkout
         uses: actions/checkout@v4
 
+      - name: Record checkout
+        if: always()
+        uses: ./.github/actions/pipeline-step
+        with:
+          name: Checkout
+          status: ${{ steps.checkout.outcome }}
+          order: '1'
+
       - name: Use Node.js ${{ matrix.node-version }}
+        id: setup-node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: npm
+
+      - name: Record setup Node
+        if: always()
+        uses: ./.github/actions/pipeline-step
+        with:
+          name: Setup Node ${{ matrix.node-version }}
+          status: ${{ steps.setup-node.outcome }}
+          order: '2'
 
       - name: Install dependencies
+        id: install
         run: npm ci
 
+      - name: Record install
+        if: always()
+        uses: ./.github/actions/pipeline-step
+        with:
+          name: Install
+          status: ${{ steps.install.outcome }}
+          order: '3'
+
       - name: Run tests
+        id: test
         run: npm test
         env:
           NODE_ENV: test
+
+      - name: Record tests
+        if: always()
+        uses: ./.github/actions/pipeline-step
+        with:
+          name: Test (Node ${{ matrix.node-version }})
+          status: ${{ steps.test.outcome }}
+          order: '4'
+
+      - name: Pipeline visualization
+        if: always()
+        uses: ./.github/actions/pipeline-render
+        with:
+          title: CI Pipeline — Node ${{ matrix.node-version }}
+          fail-on-error: 'true'
+
+  pipeline-summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Workflow pipeline visualization
+        uses: ./.github/actions/workflow-pipeline-summary
+        with:
+          title: CI Workflow — Full Pipeline
+          exclude-jobs: Pipeline Summary
 
 # Deployment steps (optional) — uncomment and configure secrets to enable
 #
@@ -50,4 +106,4 @@ jobs:
 #          docker build -t hellohello-api:latest .
 #          docker tag hellohello-api:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/hellohello-api:latest
 #          docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/hellohello-api:latest
-          aws ecs update-service \
+#          aws ecs update-service --cluster hellohello --service hellohello-api --force-new-deployment

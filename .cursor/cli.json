@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(**/*)",
+      "Write(src/**/*)",
+      "Write(__tests__/**/*)",
+      "Write(docs/**/*)",
+      "Write(.github/workflows/**/*)",
+      "Write(.cursor/**/*)",
+      "Shell(npm)",
+      "Shell(node)",
+      "Shell(git)",
+      "Shell(gh)",
+      "Shell(grep)",
+      "Shell(find)"
+    ],
+    "deny": [
+      "Write(.env*)",
+      "Write(**/*.pem)",
+      "Write(**/*secret*)"
+    ]
+  }
+}
