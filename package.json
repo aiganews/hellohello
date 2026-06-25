@@ -19,6 +19,7 @@
     "mongodb": "^5.9.2",
     "nvm": "^0.0.4",
     "swagger-ui-express": "^5.0.1",
+    "twilio": "^5.13.1",
     "uuid": "^9.0.0",
     "yaml": "^2.3.1"
   },

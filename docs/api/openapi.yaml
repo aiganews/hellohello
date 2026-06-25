@@ -450,7 +450,7 @@ components:
           example: "+12065366291"
         channel:
           type: string
-          enum: [sms, voice]
+          enum: [sms, whatsapp, voice]
           default: sms
 
     OtpRequestResponse:
