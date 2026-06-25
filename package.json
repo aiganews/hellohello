@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "start:local:prod": "NODE_ENV=production USE_IN_MEMORY_MONGO=true node src/index.js",
-    "dev": "NODE_ENV=development nodemon src/index.js",
+    "start": "node scripts/start.mjs",
+    "start:local:prod": "NODE_ENV=production USE_IN_MEMORY_MONGO=true node scripts/start.mjs",
+    "dev": "NODE_ENV=development nodemon scripts/start.mjs",
     "build": "npm install --production",
     "docker:build": "docker build -t hellohello-api:latest .",
     "test": "NODE_ENV=test node --experimental-vm-modules ./node_modules/jest/bin/jest.js --runInBand --config jest.config.cjs"
